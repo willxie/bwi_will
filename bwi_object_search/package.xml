@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>bwi_object_search</name>
+  <version>0.0.1</version>
+  <description>
+    Object search project for Building-Wide Intelligence
+    project of the University of Texas at Austin.
+  </description>
+
+  <author email="wxie@cs.utexas.edu">William Xie</author>
+  <maintainer email="wxie@cs.utexas.edu">William Xie</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+
+  <depend>roscpp</depend>
+  <depend>cv_bridge</depend>
+  <depend>image_transport</depend>
+  <depend>move_base_msgs</depend>
+  <depend>std_msgs</depend>
+
+  <!-- <depend>actionlib</depend> -->
+  <!-- <depend>actionlib_msgs</depend> -->
+  <!-- <depend>boost</depend> -->
+  <!-- <depend>bwi_kr_execution</depend> -->
+  <!-- <depend>bwi_msgs</depend> -->
+  <!-- <depend>pcl_ros</depend> -->
+  <!-- <depend>yaml-cpp</depend> -->
+
+  <exec_depend>message_runtime</exec_depend>
+
+</package>
