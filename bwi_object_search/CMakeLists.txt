@@ -18,12 +18,11 @@ find_package(catkin REQUIRED
         std_msgs
         cv_bridge
         image_transport
-
-        # actionlib
-        # actionlib_msgs
+        actionlib
+        actionlib_msgs
         # bwi_kr_execution
         # message_generation
-        # move_base_msgs
+        move_base_msgs
         # pcl_ros
 )
 
@@ -34,9 +33,9 @@ catkin_package(
     CATKIN_DEPENDS
         roscpp
         std_msgs
-        # actionlib_msgs
+        actionlib_msgs
         # message_runtime
-        # move_base_msgs
+        move_base_msgs
 )
 
 ###########

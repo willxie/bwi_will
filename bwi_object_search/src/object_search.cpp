@@ -1,31 +1,51 @@
 #include <ros/ros.h>
-// #include "std_msgs/String.h"
-#include <geometry_msgs/PoseStamped.h>
-#include <sstream>
+#include <move_base_msgs/MoveBaseAction.h>
+#include <actionlib/client/simple_action_client.h>
+#include <math.h>
 
+typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "object_search");
-    ros::NodeHandle *nh = new ros::NodeHandle();
 
-    ros::Publisher simple_goal_pub = nh->advertise<geometry_msgs::PoseStamped>("/move_base_interruptable_simple/goal", 100);
+    // Tell the action client that we want to spin a thread by default
+    MoveBaseClient ac("move_base", true);
 
+    // Wait for the action server to come up
+    while (!ac.waitForServer(ros::Duration(5.0)))
+    {
+        ROS_INFO("Waiting for the move_base action server to come up");
+    }
+
+
+    double theta = M_PI;
     while (ros::ok())
     {
-        ros::spinOnce();
-        geometry_msgs::PoseStamped goal_msg;
+        move_base_msgs::MoveBaseGoal goal;
 
-        goal_msg.header.frame_id = "level_mux/map";
-        goal_msg.pose.position.x = -40.0;
-        goal_msg.pose.position.y = -11.3;
-        goal_msg.pose.orientation.z   = 1;
-        goal_msg.pose.orientation.w   = 0;
+        goal.target_pose.header.frame_id = "level_mux/map";
+        goal.target_pose.header.stamp = ros::Time::now();
 
+        goal.target_pose.pose.position.x = -35.0;
+        goal.target_pose.pose.position.y = -11.5;
 
-        ROS_INFO("Publishing new goal...");
-        simple_goal_pub.publish(goal_msg);
+        theta += 0.5;
+        if (theta > 2.0 * M_PI) {
+            theta -= 2.0 * M_PI;
+        }
+        goal.target_pose.pose.orientation.z = sin(theta / 2);
+        goal.target_pose.pose.orientation.w = cos(theta / 2);
 
-        ros::Duration(10).sleep();
+        ROS_INFO("Sending goal");
+        ac.sendGoal(goal);
+
+        ac.waitForResult();
+
+        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+            ROS_INFO("Turn success");
+        else
+            ROS_INFO("Turn failed");
+
     }
 }
