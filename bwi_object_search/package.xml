@@ -24,11 +24,12 @@
   <depend>move_base_msgs</depend>
   <depend>actionlib</depend>
   <depend>actionlib_msgs</depend>
+  <depend>yaml-cpp</depend>
   <!-- <depend>boost</depend> -->
   <!-- <depend>bwi_kr_execution</depend> -->
   <!-- <depend>bwi_msgs</depend> -->
   <!-- <depend>pcl_ros</depend> -->
-  <!-- <depend>yaml-cpp</depend> -->
+
 
   <exec_depend>message_runtime</exec_depend>
 
