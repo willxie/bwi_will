@@ -1,0 +1,6 @@
+[submodule "usb_cam"]
+	path = usb_cam
+	url = https://github.com/bosch-ros-pkg/usb_cam
+[submodule "ar_tools"]
+	path = ar_tools
+	url = https://github.com/willxie/ar_tools
