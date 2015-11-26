@@ -1,0 +1,19 @@
+#the number of patterns to be recognized
+2
+
+#pattern 1
+cube
+data/4x4/4x4_12.patt
+150.0
+0.0 0.0
+
+#pattern 2
+cone
+data/4x4/4x4_83.patt
+80.0
+0.0 0.0
+
+# cube
+# cone
+# torus
+# sphere
