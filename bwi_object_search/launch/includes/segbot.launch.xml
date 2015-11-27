@@ -13,7 +13,9 @@
   <node name="move_base_interruptable" pkg="segbot_navigation" type="move_base_interruptable_server" />
   <node name="move_base_interruptable_simple" pkg="segbot_navigation" type="move_base_interruptable_simple" />
 
-  <include file="$(find segbot_navigation)/launch/amcl.launch">
+  <!-- Use custon amcl -->
+  <!-- <include file="$(find segbot_navigation)/launch/amcl.launch"> -->
+  <include file="$(find amcl_will)/launch/amcl.launch">
     <arg name="map_service" value="level_mux/static_map" />
     <arg name="map_topic" value="level_mux/map" />
     <arg name="map_frame_id" value="level_mux/map" />

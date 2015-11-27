@@ -37,7 +37,7 @@
 
   <node name="usb_camera" pkg="usb_cam" type="usb_cam_node" output="screen" >
     <param name="camera_name" value="usb_camera" />
-    <param name="video_device" value="/dev/video1" />
+    <param name="video_device" value="/dev/video0" />
     <param name="image_width" value="640" />
     <param name="image_height" value="480" />
     <param name="pixel_format" value="yuyv" />
@@ -64,7 +64,7 @@
   <node name="ar_pose" pkg="ar_pose" type="ar_multi" respawn="false"
     output="screen">
     <param name="marker_pattern_list" type="string"
-      value="$(find bwi_object_search)/object_list.txt"/>
+      value="$(find bwi_object_search)/data/object_list.txt"/>
     <param name="threshold" type="int" value="100"/>
   </node>
 
