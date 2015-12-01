@@ -274,9 +274,6 @@ main(int argc, char** argv)
   // Make our node available to sigintHandler
   amcl_node_ptr.reset(new AmclNode());
 
-  ROS_INFO("Welcome to AMCL_will node");
-  ROS_DEBUG("Welcome to AMCL_will node debug");
-
   ros::spin();
 
   // Without this, our boost locks are not shut down nicely
@@ -737,7 +734,6 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
                          sigma_hit_, lambda_short_, 0.0);
   else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD_PROB){
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    ROS_INFO("==================== =======");
     laser_->SetModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_,
 					laser_likelihood_max_dist_,
 					do_beamskip_, beam_skip_distance_,
@@ -747,7 +743,6 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
   else
   {
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    ROS_INFO("==================== =======");
     laser_->SetModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
                                     laser_likelihood_max_dist_);
     ROS_INFO("Done initializing likelihood field model.");

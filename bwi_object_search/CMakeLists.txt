@@ -33,13 +33,24 @@ find_package(catkin REQUIRED
 
 find_package(Boost REQUIRED COMPONENTS filesystem)
 
+find_package(artoolkit)
+
+# add_message_files(
+#   DIRECTORY msg
+#   FILES
+# 	ARMarker.msg
+# 	ARMarkers.msg
+# )
+
+
 catkin_package(
     CATKIN_DEPENDS
         roscpp
         std_msgs
         actionlib_msgs
-        # message_runtime
         move_base_msgs
+        message_runtime
+        artoolkit
 )
 
 ###########
@@ -59,6 +70,14 @@ target_link_libraries(object_search
 #     ${PCL_LIBRARY_DIRS}
 #     ${OpenCV_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
+)
+
+add_executable(ar_object_transform src/ar_object_transform.cpp)
+target_link_libraries(ar_object_transform
+    ${catkin_LIBRARIES}
+#     ${PCL_LIBRARY_DIRS}
+#     ${OpenCV_LIBRARIES}
+    # ${YAML_CPP_LIBRARIES}
 )
 
 #############
