@@ -35,14 +35,6 @@ find_package(Boost REQUIRED COMPONENTS filesystem)
 
 find_package(artoolkit)
 
-# add_message_files(
-#   DIRECTORY msg
-#   FILES
-# 	ARMarker.msg
-# 	ARMarkers.msg
-# )
-
-
 catkin_package(
     CATKIN_DEPENDS
         roscpp
