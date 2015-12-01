@@ -27,6 +27,7 @@ find_package(catkin REQUIRED
         # bwi_kr_execution
         # message_generation
         move_base_msgs
+        tf
         # pcl_ros
 )
 
