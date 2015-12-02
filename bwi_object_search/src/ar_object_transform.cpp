@@ -30,8 +30,9 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg){
           pose_before.header = ar_pose_marker.header;
           pose_before.pose = ar_pose_marker.pose.pose;
           // Wait until the transform is ready
-          listener.waitForTransform(pose_before.header.frame_id, map_frame,
-                                    pose_before.header.stamp, ros::Duration(3.0));
+          // listener.waitForTransform(pose_before.header.frame_id, map_frame,
+          //                           pose_before.header.stamp, ros::Duration(3.0));
+
           // listener.transformPose(map_frame,
           //                        pose_before,
           //                        pose_transformed);
@@ -41,7 +42,7 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg){
           listener.transformPose(map_frame,
                                  pose_before.header.stamp - ros::Duration(3),
                                  pose_before,
-                                 map_frame,
+                                 pose_before.header.frame_id,
                                  pose_transformed);
 
           std::cout<<"\t(" << pose_transformed.pose.position.x;

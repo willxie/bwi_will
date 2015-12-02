@@ -6,8 +6,8 @@
 
   <arg name="scan_topic" default="scan_filtered" />
 
-  <arg name="initial_pose_x" default="0.0" />
-  <arg name="initial_pose_y" default="0.0" />
+  <arg name="initial_pose_x" default="-39.0" />
+  <arg name="initial_pose_y" default="-11.0" />
   <arg name="initial_pose_a" default="0.0" />
 
   <arg name="map_frame_id" default="map" />

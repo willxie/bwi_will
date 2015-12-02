@@ -30,11 +30,11 @@ find_package(catkin REQUIRED
         tf
         # pcl_ros
 )
-
-
 find_package(Boost REQUIRED COMPONENTS filesystem)
-
 find_package(artoolkit)
+
+
+
 
 catkin_package(
     CATKIN_DEPENDS
@@ -50,11 +50,22 @@ catkin_package(
 ## Build ##
 ###########
 
+add_library(map
+  src/map/map.c
+  src/map/map_cspace.cpp
+  src/map/map_range.c
+  src/map/map_store.c
+  src/map/map_draw.c
+)
+
+
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   # ${PCL_INCLUDE_DIRS}
   ${YAML_CPP_INCLUDE_DIRS}
+  include
+
 )
 
 add_executable(object_search src/object_search.cpp)
@@ -63,6 +74,7 @@ target_link_libraries(object_search
 #     ${PCL_LIBRARY_DIRS}
 #     ${OpenCV_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
+    map
 )
 
 add_executable(ar_object_transform src/ar_object_transform.cpp)

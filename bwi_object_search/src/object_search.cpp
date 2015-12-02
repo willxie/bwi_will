@@ -3,18 +3,157 @@
 
 #include <ros/ros.h>
 #include <ros/package.h>
+#include <signal.h>
 
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
 #include <yaml-cpp/yaml.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+// #include <map>
+#include "map.h"
+#include "nav_msgs/GetMap.h"
+#include "nav_msgs/SetMap.h"
+
+
+// For transform support
+#include "tf/transform_broadcaster.h"
+#include "tf/transform_listener.h"
+#include "tf/message_filter.h"
+#include "tf/tf.h"
+
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
+#include "geometry_msgs/PoseArray.h"
+#include "geometry_msgs/Pose.h"
+
+#include <termios.h>
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 geometry_msgs::Pose current_position;
+
+std::vector<std::pair<int,int> > free_space_indices;
+
+std::string map_frame = "level_mux/map";
+// std::string map_frame = "map";
+
+map_t* map_;
+bool has_map = false;
+
+
+// List of publisher and subscribers
+// TODO: really need to class-ify this
+ros::Publisher cmd_vel_pub;
+ros::Publisher loc_visited_pub;
+ros::Publisher loc_free_pub;
+ros::Subscriber amcl_pose_sub;
+ros::Subscriber map_sub;
+
+
+void mySigintHandler(int sig)
+{
+  ROS_INFO("Shutting down...");
+  // Do some custom action.
+  // For example, publish a stop message to some other nodes.
+
+  // All the default sigint handler does is call shutdown()
+  ros::shutdown();
+}
+
+// Non-blocking keyboard press
+// http://answers.ros.org/question/63491/keyboard-key-pressed/
+int getch()
+{
+  static struct termios oldt, newt;
+  tcgetattr( STDIN_FILENO, &oldt);           // save old settings
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON);                 // disable buffering
+  tcsetattr( STDIN_FILENO, TCSANOW, &newt);  // apply new settings
+
+  int c = getchar();  // read character (non-blocking)
+
+  tcsetattr( STDIN_FILENO, TCSANOW, &oldt);  // restore old settings
+  return c;
+}
+
+
+
 void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
     current_position = msg->pose.pose;
+}
+
+map_t*
+convertMap( const nav_msgs::OccupancyGrid& map_msg )
+{
+    map_t* map = map_alloc();
+    ROS_ASSERT(map);
+
+    map->size_x = map_msg.info.width;
+    map->size_y = map_msg.info.height;
+    map->scale = map_msg.info.resolution;
+    map->origin_x = map_msg.info.origin.position.x + (map->size_x / 2) * map->scale;
+    map->origin_y = map_msg.info.origin.position.y + (map->size_y / 2) * map->scale;
+    // Convert to player format
+    map->cells = (map_cell_t*)malloc(sizeof(map_cell_t)*map->size_x*map->size_y);
+    ROS_ASSERT(map->cells);
+    for(int i=0;i<map->size_x * map->size_y;i+=10) // Down sampled
+    {
+        if(map_msg.data[i] == 0)
+            map->cells[i].occ_state = -1; // Free
+        else if(map_msg.data[i] == 100)
+            map->cells[i].occ_state = +1; // Occupied
+        else
+            map->cells[i].occ_state = 0; // Unknown
+    }
+
+    return map;
+}
+
+void handleMapMessage(const nav_msgs::OccupancyGrid& msg)
+{
+    map_ = convertMap(msg);
+
+    // Index of free space
+    free_space_indices.resize(0);
+    for(int i = 0; i < map_->size_x; i++)
+        for(int j = 0; j < map_->size_y; j++)
+            if(map_->cells[MAP_INDEX(map_,i,j)].occ_state == -1)
+                free_space_indices.push_back(std::make_pair(i,j));
+
+}
+
+
+void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
+    ROS_INFO("Map received");
+
+    // Only get map once
+    if (has_map) {
+        return;
+    }
+
+    handleMapMessage(*msg);
+
+    ROS_INFO("Free location size: %d", (int)free_space_indices.size());
+
+    // Publish all free locations
+    geometry_msgs::PoseArray cloud_msg;
+    cloud_msg.header.stamp = ros::Time::now();
+    cloud_msg.header.frame_id = map_frame;
+    cloud_msg.poses.resize(free_space_indices.size());
+    for (int i = 0; i < free_space_indices.size(); ++i) {
+        auto& loc = free_space_indices[i];
+
+        // ROS_INFO("(%d, %d)", loc.first, loc.second);
+        tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(0),
+                                 tf::Vector3(MAP_WXGX(map_, loc.first),
+                                             MAP_WYGY(map_, loc.second),
+                                             0)),
+                        cloud_msg.poses[i]);
+    }
+
+    loc_free_pub.publish(cloud_msg);
+
+    has_map = true;
 }
 
 int main(int argc, char **argv)
@@ -54,15 +193,25 @@ int main(int argc, char **argv)
     }
 
     // ros::Subscriber odom_sub = nh.subscribe("odom", 10, chatterCallback);
-    ros::Publisher cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-    ros::Subscriber amcl_pose_sub = nh.subscribe("amcl_pose", 100, amclPoseCallback);
+    cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+    loc_free_pub = nh.advertise<geometry_msgs::PoseArray>("loc_free", 2, true);
+    loc_visited_pub = nh.advertise<geometry_msgs::PoseArray>("loc_visited", 2, true);
+
+    amcl_pose_sub = nh.subscribe("amcl_pose", 100, amclPoseCallback);
+    map_sub = nh.subscribe(map_frame, 1, mapCallback);
 
     double theta = M_PI;
     int last_location_num = -1;
+    bool keypress_exit = false;
+
+
+    signal(SIGINT, mySigintHandler);
+
+    ROS_INFO("waiting...");
+    ros::spin();
+
     while (ros::ok())
     {
-        move_base_msgs::MoveBaseGoal goal;
-
         // Different location each time
         int location_num = rand() % locations.size();
         while (location_num == last_location_num) {
@@ -72,8 +221,11 @@ int main(int argc, char **argv)
 
         std::pair<double, double>& new_location = locations[location_num];
         // std::pair<double, double>& new_location = locations[0];
+
+        // std::pair<double, double>& new_location = locations[0];
         ROS_INFO("Location #%d", location_num);
-        goal.target_pose.header.frame_id = "level_mux/map";
+        move_base_msgs::MoveBaseGoal goal;
+        goal.target_pose.header.frame_id = map_frame;
         goal.target_pose.header.stamp = ros::Time::now();
 
         goal.target_pose.pose.position.x = new_location.first;
@@ -88,6 +240,27 @@ int main(int argc, char **argv)
 
         ROS_INFO("Sending goal");
         ac.sendGoal(goal);
+
+        // while (ac.getState() != actionlib::SimpleClientGoalState::SUCCEEDED) {
+        // }
+        while (!ac.waitForResult(ros::Duration(1.0))) {
+            ROS_INFO(".");
+            // ROS_INFO("%d", ac.getState());
+            // int c = getch();   // call your non-blocking input function
+            // if (c == '\b') {
+            //     ROS_INFO("Keyboard interrupt");
+            //     ac.cancelGoal();
+            //     ROS_INFO("Goal canceled")
+            //     std::pair<double, double>& new_location = locations[0];
+            //     goal.target_pose.header.frame_id = "level_mux/map";
+            //     goal.target_pose.header.stamp = ros::Time::now();
+            //     goal.target_pose.pose.position.x = new_location.first;
+            //     goal.target_pose.pose.position.y = new_location.second;
+            //     ac.sendGoal(goal);
+            //     ROS_INFO("Going back home");
+            // }
+            // keypress_exit = true;
+        }
 
         ac.waitForResult();
 
@@ -116,7 +289,13 @@ int main(int argc, char **argv)
         cmd_vel_pub.publish(rotate);
         ros::Duration(10).sleep();
         ros::spinOnce();
+
+        // Exit if key pressed
+        if (keypress_exit) {
+            break;
+        }
     }
 
-
+    ROS_INFO("Gracefully exiting");
+    return 0;
 }
