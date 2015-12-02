@@ -49,12 +49,11 @@ ros::Publisher loc_free_pub;
 ros::Subscriber amcl_pose_sub;
 ros::Subscriber map_sub;
 
-
 void mySigintHandler(int sig)
 {
   ROS_INFO("Shutting down...");
   // Do some custom action.
-  // For example, publish a stop message to some other nodes.
+  // For example, publish a stop message to some other nodes
 
   // All the default sigint handler does is call shutdown()
   ros::shutdown();
@@ -80,6 +79,8 @@ int getch()
 
 void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
     current_position = msg->pose.pose;
+
+
 }
 
 map_t*
@@ -161,6 +162,7 @@ int main(int argc, char **argv)
     srand(time(NULL));
 
     // TODO: YAML
+    // Some predefined locations
     std::vector<std::pair<double, double> > locations; // (x, y)
     locations.emplace_back(-35.0, -11.5);   // In front of my computer
     locations.emplace_back(-30.03, -4.73);  // Kitchen
@@ -183,6 +185,8 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "object_search");
     ros::NodeHandle nh;
 
+    signal(SIGINT, mySigintHandler);
+
     // Tell the action client that we want to spin a thread by default
     MoveBaseClient ac("move_base", true);
 
@@ -203,9 +207,6 @@ int main(int argc, char **argv)
     double theta = M_PI;
     int last_location_num = -1;
     bool keypress_exit = false;
-
-
-    signal(SIGINT, mySigintHandler);
 
     ROS_INFO("waiting...");
     ros::spin();
