@@ -4,240 +4,240 @@
 # Object number 1
 AR_OBJECT_1
 data/4x4/4x4_1.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 2
 AR_OBJECT_2
 data/4x4/4x4_2.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 3
 AR_OBJECT_3
 data/4x4/4x4_3.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 4
 AR_OBJECT_4
 data/4x4/4x4_4.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 5
 AR_OBJECT_5
 data/4x4/4x4_5.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 6
 AR_OBJECT_6
 data/4x4/4x4_6.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 7
 AR_OBJECT_7
 data/4x4/4x4_7.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 8
 AR_OBJECT_8
 data/4x4/4x4_8.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 9
 AR_OBJECT_9
 data/4x4/4x4_9.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 10
 AR_OBJECT_10
 data/4x4/4x4_10.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 11
 AR_OBJECT_11
 data/4x4/4x4_11.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 12
 AR_OBJECT_12
 data/4x4/4x4_12.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 13
 AR_OBJECT_13
 data/4x4/4x4_13.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 14
 AR_OBJECT_14
 data/4x4/4x4_14.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 15
 AR_OBJECT_15
 data/4x4/4x4_15.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 16
 AR_OBJECT_16
 data/4x4/4x4_16.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 17
 AR_OBJECT_17
 data/4x4/4x4_17.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 18
 AR_OBJECT_18
 data/4x4/4x4_18.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 19
 AR_OBJECT_19
 data/4x4/4x4_19.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 20
 AR_OBJECT_20
 data/4x4/4x4_20.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 21
 AR_OBJECT_21
 data/4x4/4x4_21.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 22
 AR_OBJECT_22
 data/4x4/4x4_22.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 23
 AR_OBJECT_23
 data/4x4/4x4_23.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 24
 AR_OBJECT_24
 data/4x4/4x4_24.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 25
 AR_OBJECT_25
 data/4x4/4x4_25.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 26
 AR_OBJECT_26
 data/4x4/4x4_26.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 27
 AR_OBJECT_27
 data/4x4/4x4_27.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 28
 AR_OBJECT_28
 data/4x4/4x4_28.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 29
 AR_OBJECT_29
 data/4x4/4x4_29.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 30
 AR_OBJECT_30
 data/4x4/4x4_30.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 31
 AR_OBJECT_31
 data/4x4/4x4_31.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 32
 AR_OBJECT_32
 data/4x4/4x4_32.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 33
 AR_OBJECT_33
 data/4x4/4x4_33.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 34
 AR_OBJECT_34
 data/4x4/4x4_34.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 35
 AR_OBJECT_35
 data/4x4/4x4_35.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 36
 AR_OBJECT_36
 data/4x4/4x4_36.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 37
 AR_OBJECT_37
 data/4x4/4x4_37.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 38
 AR_OBJECT_38
 data/4x4/4x4_38.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 39
 AR_OBJECT_39
 data/4x4/4x4_39.patt
-80.0
+105.0
 0.0 0.0
 
 # Object number 40
 AR_OBJECT_40
 data/4x4/4x4_40.patt
-80.0
+105.0
 0.0 0.0
 

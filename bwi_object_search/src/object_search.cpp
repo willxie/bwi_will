@@ -97,7 +97,7 @@ convertMap( const nav_msgs::OccupancyGrid& map_msg )
     // Convert to player format
     map->cells = (map_cell_t*)malloc(sizeof(map_cell_t)*map->size_x*map->size_y);
     ROS_ASSERT(map->cells);
-    for(int i=0;i<map->size_x * map->size_y;i+=10) // Down sampled
+    for(int i=0;i<map->size_x * map->size_y;i+=10000) // Down sampled
     {
         if(map_msg.data[i] == 0)
             map->cells[i].occ_state = -1; // Free
@@ -124,18 +124,7 @@ void handleMapMessage(const nav_msgs::OccupancyGrid& msg)
 }
 
 
-void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
-    ROS_INFO("Map received");
-
-    // Only get map once
-    if (has_map) {
-        return;
-    }
-
-    handleMapMessage(*msg);
-
-    ROS_INFO("Free location size: %d", (int)free_space_indices.size());
-
+void publishFreeSpace() {
     // Publish all free locations
     geometry_msgs::PoseArray cloud_msg;
     cloud_msg.header.stamp = ros::Time::now();
@@ -154,6 +143,20 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
 
     loc_free_pub.publish(cloud_msg);
 
+    ROS_INFO("Free location size: %d", (int)free_space_indices.size());
+}
+
+void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
+    ROS_INFO("Map received");
+
+    // Only get map once
+    if (has_map) {
+        return;
+    }
+
+    handleMapMessage(*msg);
+
+    publishFreeSpace();
     has_map = true;
 }
 
@@ -208,8 +211,14 @@ int main(int argc, char **argv)
     int last_location_num = -1;
     bool keypress_exit = false;
 
-    ROS_INFO("waiting...");
-    ros::spin();
+    ROS_INFO("Start");
+
+    while (!has_map) {
+        ros::spinOnce();
+
+        ros::Duration(1.0).sleep();
+    }
+
 
     while (ros::ok())
     {
@@ -220,10 +229,14 @@ int main(int argc, char **argv)
         }
         last_location_num = location_num;
 
-        std::pair<double, double>& new_location = locations[location_num];
-        // std::pair<double, double>& new_location = locations[0];
+        // std::pair<double, double>& new_location = locations[location_num];
 
-        // std::pair<double, double>& new_location = locations[0];
+        // Shuffle free locations
+        std::random_shuffle ( free_space_indices.begin(), free_space_indices.end() );
+        std::pair<int,int> fsc = free_space_indices.back();
+        free_space_indices.pop_back();
+        std::pair<double, double> new_location = std::make_pair<double,double>(MAP_WXGX(map_, fsc.first), MAP_WYGY(map_, fsc.second));
+
         ROS_INFO("Location #%d", location_num);
         move_base_msgs::MoveBaseGoal goal;
         goal.target_pose.header.frame_id = map_frame;
@@ -273,28 +286,28 @@ int main(int argc, char **argv)
         ros::Duration(2).sleep();
 
         // Spin
-        ROS_INFO("Spinning");
-        geometry_msgs::Twist rotate;
-        rotate.angular.z = 0.3;
+        // ROS_INFO("Spinning");
+        // geometry_msgs::Twist rotate;
+        // rotate.angular.z = 0.3;
 
-        ros::Time start_time = ros::Time::now();
-        ros::Duration timeout(12.0); // Timeout of 2 seconds
-        while(ros::Time::now() - start_time < timeout) {
-            cmd_vel_pub.publish(rotate);
-        }
+        // ros::Time start_time = ros::Time::now();
+        // ros::Duration timeout(12.0); // Timeout of 2 seconds
+        // while(ros::Time::now() - start_time < timeout) {
+        //     cmd_vel_pub.publish(rotate);
+        // }
+
+        // rotate.angular.z = 0.0;
+        // cmd_vel_pub.publish(rotate);
+        // cmd_vel_pub.publish(rotate);
+        // cmd_vel_pub.publish(rotate);
+        // ros::Duration(10).sleep();
 
         ROS_INFO("Done.");
-        rotate.angular.z = 0.0;
-        cmd_vel_pub.publish(rotate);
-        cmd_vel_pub.publish(rotate);
-        cmd_vel_pub.publish(rotate);
-        ros::Duration(10).sleep();
+
         ros::spinOnce();
 
-        // Exit if key pressed
-        if (keypress_exit) {
-            break;
-        }
+        publishFreeSpace();
+
     }
 
     ROS_INFO("Gracefully exiting");
