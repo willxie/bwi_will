@@ -9,7 +9,7 @@
 
 struct ObjectStamped {
     int id;                           // Name of object
-    geometry_msgs::PoseStamped pose;  // Pose of object
+    geometry_msgs::PoseStamped pose_stamped;  // Pose of object
     int count;                        // Number of time it appeared
 };
 
@@ -62,14 +62,18 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
           // Process the temp list to pick out both comfirmed objects and
           // remove stale objects
           for (auto it = temp_object_list.begin(); it != temp_object_list.end();) {
-              if (it->count > count_threshold) {
-                  // TODO move element to data container
-                  it = temp_object_list.erase(it);
-              } else if (pose_transformed.header.stamp - it->pose.header.stamp > time_threshold) {
-                  it = temp_object_list.erase(it);
-              } else {
-                  ++it;
-              }
+             if (pose_transformed.header.stamp - it->pose_stamped.header.stamp > time_threshold) {
+                 // Only Save object loc when it becomes stale.
+                 // This avoids the issue of bias towards object with more screen time
+                 // higher weight
+                 if (it->count > count_threshold) {
+                     // TODO move element to data container
+                     std::cout << "(" << it->id << ":" << it->count << ") saved" << std::endl;
+                 }
+                 it = temp_object_list.erase(it);
+             } else {
+                 ++it;
+             }
           }
 
           // Search to see if the objec is already in list
@@ -78,10 +82,12 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
               ObjectStamped& os = temp_object_list[j];
               if (os.id == ar_pose_marker.id) {
                   // Check Euclidean distance distance
-                  double distance = sqrt(pow(pose_transformed.pose.position.x - os.pose.pose.position.x, 2) +
-                                         pow(pose_transformed.pose.position.y - os.pose.pose.position.y, 2) +
-                                         pow(pose_transformed.pose.position.z - os.pose.pose.position.z, 2));
+                  double distance = sqrt(pow(pose_transformed.pose.position.x - os.pose_stamped.pose.position.x, 2) +
+                                         pow(pose_transformed.pose.position.y - os.pose_stamped.pose.position.y, 2) +
+                                         pow(pose_transformed.pose.position.z - os.pose_stamped.pose.position.z, 2));
                   if (distance < distance_threshold) {
+                      // Update timestamp and loc with header to account for moving object
+                      os.pose_stamped = pose_transformed;
                       os.count++;
                       has_added = true;
                       break;
@@ -93,7 +99,7 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
           if (!has_added) {
               ObjectStamped os;
               os.id = ar_pose_marker.id;
-              os.pose = pose_transformed;
+              os.pose_stamped = pose_transformed;
               os.count = 0;
               temp_object_list.push_back(os);
           }
