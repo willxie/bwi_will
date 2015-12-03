@@ -1,8 +1,9 @@
 def main():
-    num_tag = 40
+    num_tag = 15
+
     with open("object_list.txt", 'w') as f:
         f.write("# The number of patterns to be recognized\n")
-        f.write(str(num_tag))
+        f.write(str(num_tag + 1))
         f.write("\n\n")
 
         # Just a hack for now since the index starts from 0

@@ -1,11 +1,14 @@
+#include <iostream>
+#include <fstream>
+#include <time.h>
+
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
 
 #include <tf/transform_listener.h>
 #include <ar_pose/ARMarkers.h>
-#include <time.h>
-
+#include <ros/package.h>
 
 struct ObjectStamped {
     int id;                           // Name of object
@@ -13,8 +16,11 @@ struct ObjectStamped {
     int count;                        // Number of time it appeared
 };
 
+
+
 // This list is used for denoise
 std::vector<ObjectStamped> temp_object_list;
+std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/relation_data.txt";
 
 ros::Duration time_threshold (5);
 double distance_threshold = 0.5;
@@ -22,6 +28,7 @@ int count_threshold = 30;
 double range_threshold = 2.0;             // Limit the range the robot can detect objects
 double z_upper_threshold = 1.00;
 double z_lower_threshold = 0.55;
+
 
 void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
     ar_pose::ARMarker ar_pose_marker;
@@ -87,7 +94,18 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
                  // higher weight
                  if (it->count > count_threshold) {
                      // TODO move element to data container
+                     // std::time_t result = std::time(nullptr);
                      std::cout << "(" << it->id << ":" << it->count << ") saved" << std::endl;
+                     std::ofstream relation_data;
+                     relation_data.open(relation_data_path, std::ios::in | std::ios::app);
+                     relation_data << it->pose_stamped.header.stamp << " ";    // Time
+                     relation_data << it->id << " ";
+                     relation_data << it->pose_stamped.pose.position.x << " ";
+                     relation_data << it->pose_stamped.pose.position.y << " ";
+                     relation_data << it->pose_stamped.pose.position.z << " ";
+                     relation_data << "\n";
+                     relation_data.close();
+                     ROS_INFO("Saved to %s", relation_data_path.c_str());
                  }
                  it = temp_object_list.erase(it);
              } else {
@@ -146,9 +164,8 @@ int main (int argc, char** argv)
   ros::init (argc, argv, "ar_object_transform");
   ros::NodeHandle nh;
 
-
   // Create a ROS subscriber
   ros::Subscriber sub = nh.subscribe ("ar_pose_marker", 1, processing);
 
-  ros::spin ();
+  ros::spin();
 }
