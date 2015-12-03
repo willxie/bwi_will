@@ -77,6 +77,18 @@ target_link_libraries(object_search
     map
 )
 
+
+add_executable(object_search_find src/object_search_find.cpp)
+target_link_libraries(object_search_find
+    ${catkin_LIBRARIES}
+#     ${PCL_LIBRARY_DIRS}
+#     ${OpenCV_LIBRARIES}
+    ${YAML_CPP_LIBRARIES}
+    map
+)
+
+
+
 add_executable(ar_object_transform src/ar_object_transform.cpp)
 target_link_libraries(ar_object_transform
     ${catkin_LIBRARIES}
