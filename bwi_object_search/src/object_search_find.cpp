@@ -76,7 +76,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 geometry_msgs::Pose current_position;
 
 std::vector<std::pair<int,int> > free_space_indices;
-
+std::vector<double> free_space_weight;
 std::string map_frame = "level_mux/map";
 // std::string map_frame = "map";
 
@@ -160,8 +160,11 @@ void handleMapMessage(const nav_msgs::OccupancyGrid& msg)
     free_space_indices.resize(0);
     for(int i = 0; i < map_->size_x; i++)
         for(int j = 0; j < map_->size_y; j++)
-            if(map_->cells[MAP_INDEX(map_,i,j)].occ_state == -1)
+            if(map_->cells[MAP_INDEX(map_,i,j)].occ_state == -1) {
                 free_space_indices.push_back(std::make_pair(i,j));
+                free_space_weight.push_back(1.0);
+            }
+
 
 }
 
@@ -449,7 +452,7 @@ int main(int argc, char **argv)
 
     distance_vector.push_back(0); // Dummy for the target
     double target_x = -12.3969;
-    double target_y =  -15.9015;
+    double target_y = -15.9015;
     for (int l = 1; l < 16; ++l) {
         double total_distance = 0;
         int count = 0;
@@ -494,8 +497,7 @@ int main(int argc, char **argv)
 // std::vector<int> seen_id_list
 // std::vector<double>  seen_id_x_list;
 // std::vector<double>  seen_id_y_list;
-
-        double distance_bound = 2.0;
+        double distance_bound = 3.0;
         for (int id_index = 0; id_index < seen_id_list.size(); ++id_index) {
             double target_distance = distance_vector[seen_id_list[id_index]];
             if (target_distance == 0) {
@@ -510,10 +512,9 @@ int main(int argc, char **argv)
                 double y =  MAP_WYGY(map_, it->second);
                 double distance = sqrt(pow(x - target_x, 2) + pow(y - target_x, 2));
 
-                if (distance > target_distance + distance_bound) {
-// } ||
-//                     distance < target_distance - distance_bound) {
-                    it = free_space_indices.erase(it);
+                if (distance < target_distance + distance_bound ||
+                    distance > target_distance - distance_bound) {
+                    free_space_indices.push_back(*it);
                 } else {
                     ++it;
                 }
@@ -531,23 +532,26 @@ int main(int argc, char **argv)
 ////////////////////
 
         // Different location each time
-        int location_num = rand() % locations.size();
-        while (location_num == last_location_num) {
-            location_num = rand() % locations.size();
-        }
-        last_location_num = location_num;
+        // int location_num = rand() % locations.size();
+        // while (location_num == last_location_num) {
+        //     location_num = rand() % locations.size();
+        // }
+        // last_location_num = location_num;
 
-        std::pair<double, double>& new_location = locations[location_num];
-        ROS_INFO("Destination: #%d", location_num);
+        // std::pair<double, double>& new_location = locations[location_num];
+        // ROS_INFO("Destination: #%d", location_num);
 
-        // // Pick a random location uniformly distributed on the map
-        // std::random_shuffle ( free_space_indices.begin(), free_space_indices.end() );
-        // std::pair<int,int> fsc = free_space_indices.back();
-        // // free_space_indices.pop_back(); // TODO replacement or not?
-        // double loc_x = MAP_WXGX(map_, fsc.first);
-        // double loc_y =  MAP_WYGY(map_, fsc.second);
-        // std::pair<double, double> new_location = std::make_pair<double,double>((double)loc_x, (double)loc_y);
-        // ROS_INFO("Destination: (%f, %f)", loc_x, loc_y);
+
+
+        // Pick a random location uniformly distributed on the map
+        // std::piecewise_constant_distribution<> d(free_space_indices.begin(), free_space_indices.end(), free_space_weights.begin());
+        std::random_shuffle ( free_space_indices.begin(), free_space_indices.end() );
+        std::pair<int,int> fsc = free_space_indices.back();
+        free_space_indices.pop_back(); // TODO replacement or not?
+        double loc_x = MAP_WXGX(map_, fsc.first);
+        double loc_y =  MAP_WYGY(map_, fsc.second);
+        std::pair<double, double> new_location = std::make_pair<double,double>((double)loc_x, (double)loc_y);
+        ROS_INFO("Destination: (%f, %f)", loc_x, loc_y);
 
         move_base_msgs::MoveBaseGoal goal;
         goal.target_pose.header.frame_id = map_frame;
