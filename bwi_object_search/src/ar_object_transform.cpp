@@ -16,9 +16,12 @@ struct ObjectStamped {
 // This list is used for denoise
 std::vector<ObjectStamped> temp_object_list;
 
-ros::Duration time_threshold (10);
-double distance_threshold = 1.0;
-int count_threshold = 10;
+ros::Duration time_threshold (5);
+double distance_threshold = 0.5;
+int count_threshold = 30;
+double range_threshold = 2.0;             // Limit the range the robot can detect objects
+double z_upper_threshold = 1.00;
+double z_lower_threshold = 0.55;
 
 void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
     ar_pose::ARMarker ar_pose_marker;
@@ -43,6 +46,7 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
           geometry_msgs::PoseStamped pose_transformed;
           pose_before.header = ar_pose_marker.header;
           pose_before.pose = ar_pose_marker.pose.pose;
+
           // Wait until the transform is ready
           // listener.waitForTransform(pose_before.header.frame_id, map_frame,
           //                           pose_before.header.stamp, ros::Duration(3.0));
@@ -58,6 +62,21 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
                                  pose_before,
                                  pose_before.header.frame_id,
                                  pose_transformed);
+
+          // Set detection range
+          if (pose_before.pose.position.z > range_threshold) {
+              continue;
+          }
+
+          // Set global z threshold
+          if (pose_transformed.pose.position.z > z_upper_threshold ||
+              pose_transformed.pose.position.z < z_lower_threshold) {
+              continue;
+          }
+          // ROS_INFO("\t(%f, %f, %f)", pose_transformed.pose.position.x,
+          //          pose_transformed.pose.position.y,
+          //          pose_transformed.pose.position.z);
+
 
           // Process the temp list to pick out both comfirmed objects and
           // remove stale objects

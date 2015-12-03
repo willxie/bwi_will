@@ -5,6 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /USB Camera1/Visibility1
+        - /Visited locations1/Status1
       Splitter Ratio: 0.496795
     Tree Height: 216
   - Class: rviz/Selection
@@ -374,7 +375,7 @@ Visualization Manager:
       Marker Topic: /move_base/EBandPlannerROS/eband_visualization
       Name: Eband Bubbles
       Namespaces:
-        {}
+        bubbles: true
       Queue Size: 100
       Value: true
     - Alpha: 0.3
@@ -420,6 +421,7 @@ Visualization Manager:
       Visibility:
         ARTag Markers: true
         Eband Bubbles: false
+        Free locations: false
         Global Costmap: false
         Global Path: false
         Grid: false
@@ -427,22 +429,22 @@ Visualization Manager:
         Local Costmap: false
         Localization Particles: false
         Map: false
-        PoseArray: false
         RobotModel: false
         Value: true
+        Visited locations: false
       Zoom Factor: 1
     - Arrow Length: 0.05
       Class: rviz/PoseArray
       Color: 255; 255; 0
       Enabled: true
-      Name: PoseArray
+      Name: Free locations
       Topic: /loc_free
       Value: true
     - Arrow Length: 0.3
       Class: rviz/PoseArray
       Color: 255; 100; 0
       Enabled: true
-      Name: PoseArray
+      Name: Visited locations
       Topic: /loc_visited
       Value: true
   Enabled: true
@@ -464,7 +466,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 121.51
+      Distance: 140.704
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
@@ -476,10 +478,10 @@ Visualization Manager:
         Z: -57.3726
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 1.4048
+      Pitch: 1.4448
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.71034
+      Yaw: 4.68534
     Saved: ~
 Window Geometry:
   Displays:

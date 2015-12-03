@@ -1,6 +1,12 @@
 # The number of patterns to be recognized
 40
 
+# Object number 0
+AR_OBJECT_40
+data/4x4/4x4_40.patt
+105.0
+0.0 0.0
+
 # Object number 1
 AR_OBJECT_1
 data/4x4/4x4_1.patt

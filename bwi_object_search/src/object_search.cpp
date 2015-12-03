@@ -56,7 +56,8 @@ void mySigintHandler(int sig)
   // For example, publish a stop message to some other nodes
 
   // All the default sigint handler does is call shutdown()
-  ros::shutdown();
+  // ros::shutdown();
+  exit(0);
 }
 
 // Non-blocking keyboard press
@@ -97,7 +98,7 @@ convertMap( const nav_msgs::OccupancyGrid& map_msg )
     // Convert to player format
     map->cells = (map_cell_t*)malloc(sizeof(map_cell_t)*map->size_x*map->size_y);
     ROS_ASSERT(map->cells);
-    for(int i=0;i<map->size_x * map->size_y;i+=10000) // Down sampled
+    for(int i=0;i<map->size_x * map->size_y;i+=100) // Down sampled
     {
         if(map_msg.data[i] == 0)
             map->cells[i].occ_state = -1; // Free
@@ -151,6 +152,7 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
 
     // Only get map once
     if (has_map) {
+        publishFreeSpace();
         return;
     }
 
@@ -215,10 +217,10 @@ int main(int argc, char **argv)
 
     while (!has_map) {
         ros::spinOnce();
-
+        ROS_INFO("Waiting for map...");
         ros::Duration(1.0).sleep();
     }
-
+    ROS_INFO("Got map, running main loop");
 
     while (ros::ok())
     {
@@ -231,13 +233,15 @@ int main(int argc, char **argv)
 
         // std::pair<double, double>& new_location = locations[location_num];
 
-        // Shuffle free locations
+        // Pick a random location uniformly distributed on the map
         std::random_shuffle ( free_space_indices.begin(), free_space_indices.end() );
         std::pair<int,int> fsc = free_space_indices.back();
         free_space_indices.pop_back();
-        std::pair<double, double> new_location = std::make_pair<double,double>(MAP_WXGX(map_, fsc.first), MAP_WYGY(map_, fsc.second));
+        double loc_x = MAP_WXGX(map_, fsc.first);
+        double loc_y =  MAP_WYGY(map_, fsc.second);
+        std::pair<double, double> new_location = std::make_pair<double,double>((double)loc_x, (double)loc_y);
+        ROS_INFO("Destination: (%f, %f)", loc_x, loc_y);
 
-        ROS_INFO("Location #%d", location_num);
         move_base_msgs::MoveBaseGoal goal;
         goal.target_pose.header.frame_id = map_frame;
         goal.target_pose.header.stamp = ros::Time::now();
@@ -257,8 +261,8 @@ int main(int argc, char **argv)
 
         // while (ac.getState() != actionlib::SimpleClientGoalState::SUCCEEDED) {
         // }
-        while (!ac.waitForResult(ros::Duration(1.0))) {
-            ROS_INFO(".");
+        // while (!ac.waitForResult(ros::Duration(1.0))) {
+            // std::cout << "." << std::flush;
             // ROS_INFO("%d", ac.getState());
             // int c = getch();   // call your non-blocking input function
             // if (c == '\b') {
@@ -274,7 +278,7 @@ int main(int argc, char **argv)
             //     ROS_INFO("Going back home");
             // }
             // keypress_exit = true;
-        }
+        // }
 
         ac.waitForResult();
 
@@ -283,7 +287,7 @@ int main(int argc, char **argv)
         else
             ROS_INFO("Move failed");
 
-        ros::Duration(2).sleep();
+        ros::Duration(1).sleep();
 
         // Spin
         // ROS_INFO("Spinning");
