@@ -169,11 +169,19 @@ int main(int argc, char **argv)
     // TODO: YAML
     // Some predefined locations
     std::vector<std::pair<double, double> > locations; // (x, y)
-    locations.emplace_back(-35.0, -11.5);   // In front of my computer
-    locations.emplace_back(-30.03, -4.73);  // Kitchen
-    locations.emplace_back(-47.67, -7.75);  // Robot soccer field
-    locations.emplace_back(-19.18, -4.95);  // Printer
-    locations.emplace_back(-13.97, -11.90); // North front student desk intersection
+    // locations.emplace_back(-35.0, -11.5);   // In front of my computer
+    // locations.emplace_back(-30.03, -4.73);  // Kitchen
+    // locations.emplace_back(-47.67, -7.75);  // Robot soccer field
+    // locations.emplace_back(-19.18, -4.95);  // Printer
+    // locations.emplace_back(-13.97, -11.90); // North front student desk intersection
+    locations.emplace_back(-30.22, -11.56);
+    locations.emplace_back(-13.88, -11.88);
+    locations.emplace_back(-8.21, -11.38);
+    locations.emplace_back(-14.00, -9.05);
+    locations.emplace_back(-14.00, -4.99);
+    locations.emplace_back(-8.38, -6.07);
+    locations.emplace_back(-16.76, -4.22);
+    locations.emplace_back(-14.19, -1.37);
 
     // const string locations_yaml_path = ros::package::getPath("bwi_object_search") +
     //     "yaml/locations.yaml";
@@ -231,16 +239,17 @@ int main(int argc, char **argv)
         }
         last_location_num = location_num;
 
-        // std::pair<double, double>& new_location = locations[location_num];
+        std::pair<double, double>& new_location = locations[location_num];
+        ROS_INFO("Destination: #%d", location_num);
 
-        // Pick a random location uniformly distributed on the map
-        std::random_shuffle ( free_space_indices.begin(), free_space_indices.end() );
-        std::pair<int,int> fsc = free_space_indices.back();
-        free_space_indices.pop_back();
-        double loc_x = MAP_WXGX(map_, fsc.first);
-        double loc_y =  MAP_WYGY(map_, fsc.second);
-        std::pair<double, double> new_location = std::make_pair<double,double>((double)loc_x, (double)loc_y);
-        ROS_INFO("Destination: (%f, %f)", loc_x, loc_y);
+        // // Pick a random location uniformly distributed on the map
+        // std::random_shuffle ( free_space_indices.begin(), free_space_indices.end() );
+        // std::pair<int,int> fsc = free_space_indices.back();
+        // // free_space_indices.pop_back(); // TODO replacement or not?
+        // double loc_x = MAP_WXGX(map_, fsc.first);
+        // double loc_y =  MAP_WYGY(map_, fsc.second);
+        // std::pair<double, double> new_location = std::make_pair<double,double>((double)loc_x, (double)loc_y);
+        // ROS_INFO("Destination: (%f, %f)", loc_x, loc_y);
 
         move_base_msgs::MoveBaseGoal goal;
         goal.target_pose.header.frame_id = map_frame;
@@ -290,21 +299,22 @@ int main(int argc, char **argv)
         ros::Duration(1).sleep();
 
         // Spin
-        // ROS_INFO("Spinning");
-        // geometry_msgs::Twist rotate;
-        // rotate.angular.z = 0.3;
+        ROS_INFO("Spinning");
+        geometry_msgs::Twist rotate;
+        rotate.angular.z = 0.1;
 
-        // ros::Time start_time = ros::Time::now();
-        // ros::Duration timeout(12.0); // Timeout of 2 seconds
-        // while(ros::Time::now() - start_time < timeout) {
-        //     cmd_vel_pub.publish(rotate);
-        // }
+        ros::Time start_time = ros::Time::now();
+        ros::Duration timeout(5.0); // Timeout of 2 seconds
+        while(ros::Time::now() - start_time < timeout) {
+            cmd_vel_pub.publish(rotate);
+            ros::spinOnce();
+        }
 
-        // rotate.angular.z = 0.0;
-        // cmd_vel_pub.publish(rotate);
-        // cmd_vel_pub.publish(rotate);
-        // cmd_vel_pub.publish(rotate);
-        // ros::Duration(10).sleep();
+        rotate.angular.z = 0.0;
+        cmd_vel_pub.publish(rotate);
+        cmd_vel_pub.publish(rotate);
+        cmd_vel_pub.publish(rotate);
+        ros::Duration(1).sleep();
 
         ROS_INFO("Done.");
 

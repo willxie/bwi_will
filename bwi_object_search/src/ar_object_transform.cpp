@@ -24,7 +24,7 @@ std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/
 
 ros::Duration time_threshold (5);
 double distance_threshold = 0.5;
-int count_threshold = 30;
+int count_threshold = 20;
 double range_threshold = 2.0;             // Limit the range the robot can detect objects
 double z_upper_threshold = 1.00;
 double z_lower_threshold = 0.55;
