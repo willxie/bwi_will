@@ -390,10 +390,10 @@ int main(int argc, char **argv)
 
     // Create a ROS subscriber
     ros::Subscriber sub = nh.subscribe ("ar_pose_marker", 1, processing);
-    ar_pose_trans_pub = nh.advertise<geometry_msgs::PoseArray>("loc_visited", 2, true);
 
+    // ros::spin();
 
-    amcl_pose_sub = nh.subscribe("amcl_pose", 100, amclPoseCallback);
+    // amcl_pose_sub = nh.subscribe("amcl_pose", 100, amclPoseCallback);
     map_sub = nh.subscribe(map_frame, 1, mapCallback);
 
     double theta = M_PI;
@@ -495,7 +495,7 @@ int main(int argc, char **argv)
 // std::vector<double>  seen_id_x_list;
 // std::vector<double>  seen_id_y_list;
 
-        double distance_bound = 1.0;
+        double distance_bound = 2.0;
         for (int id_index = 0; id_index < seen_id_list.size(); ++id_index) {
             double target_distance = distance_vector[seen_id_list[id_index]];
             if (target_distance == 0) {
@@ -510,22 +510,25 @@ int main(int argc, char **argv)
                 double y =  MAP_WYGY(map_, it->second);
                 double distance = sqrt(pow(x - target_x, 2) + pow(y - target_x, 2));
 
-                if (distance > target_distance + distance_bound ||
-                    distance < target_distance - distance_bound) {
+                if (distance > target_distance + distance_bound) {
+// } ||
+//                     distance < target_distance - distance_bound) {
                     it = free_space_indices.erase(it);
                 } else {
                     ++it;
                 }
             }
         }
-
         std::cout << "seen_id_list size: " << seen_id_list.size() << std::endl;
         for (auto& id : seen_id_list) {
             std::cout << id << " ";
         }
         std::cout<<std::endl;
         // TODO Clear lists
+        publishFreeSpace();
 
+
+////////////////////
 
         // Different location each time
         int location_num = rand() % locations.size();
@@ -563,6 +566,11 @@ int main(int argc, char **argv)
         ROS_INFO("Sending goal");
         ac.sendGoal(goal);
 
+        while (!ac.waitForResult(ros::Duration(0.01))) {
+            ros::spinOnce();
+        }
+
+
         ac.waitForResult();
 
         if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
@@ -593,9 +601,6 @@ int main(int argc, char **argv)
         ROS_INFO("Done.");
 
         ros::spinOnce();
-
-        publishFreeSpace();
-
     }
 
     ROS_INFO("Gracefully exiting");
