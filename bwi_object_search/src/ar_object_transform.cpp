@@ -23,7 +23,7 @@ std::vector<ObjectStamped> temp_object_list;
 std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/relation_data.txt";
 
 ros::Duration time_threshold (5);
-double distance_threshold = 0.5;
+double distance_threshold = 1.0;
 int count_threshold = 20;
 double range_threshold = 2.0;             // Limit the range the robot can detect objects
 double z_upper_threshold = 1.00;
@@ -66,7 +66,7 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
           // it publishes to tf. This is okay because map is essentially fixed
           // static time static_stamp = pose_before.header.stamp;
           listener.transformPose(map_frame,
-                                 pose_before.header.stamp - ros::Duration(5),
+                                 pose_before.header.stamp - ros::Duration(3),
                                  // static_stamp,
                                  pose_before,
                                  pose_before.header.frame_id,

@@ -182,6 +182,8 @@ int main(int argc, char **argv)
     locations.emplace_back(-8.38, -6.07);
     locations.emplace_back(-16.76, -4.22);
     locations.emplace_back(-14.19, -1.37);
+    locations.emplace_back(-14.19, -1.37);
+    locations.emplace_back(-14.19, -1.37);
 
     // const string locations_yaml_path = ros::package::getPath("bwi_object_search") +
     //     "yaml/locations.yaml";
