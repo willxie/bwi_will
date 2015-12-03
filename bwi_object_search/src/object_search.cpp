@@ -301,7 +301,7 @@ int main(int argc, char **argv)
         // Spin
         ROS_INFO("Spinning");
         geometry_msgs::Twist rotate;
-        rotate.angular.z = 0.1;
+        rotate.angular.z = 0.3;
 
         ros::Time start_time = ros::Time::now();
         ros::Duration timeout(5.0); // Timeout of 2 seconds

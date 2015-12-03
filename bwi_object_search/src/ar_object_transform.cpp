@@ -64,8 +64,10 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
 
           // This grabs the map's pose time 2 seconds before (rate at which
           // it publishes to tf. This is okay because map is essentially fixed
+          // static time static_stamp = pose_before.header.stamp;
           listener.transformPose(map_frame,
-                                 pose_before.header.stamp - ros::Duration(3),
+                                 pose_before.header.stamp - ros::Duration(5),
+                                 // static_stamp,
                                  pose_before,
                                  pose_before.header.frame_id,
                                  pose_transformed);
