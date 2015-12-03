@@ -139,7 +139,7 @@ convertMap( const nav_msgs::OccupancyGrid& map_msg )
     // Convert to player format
     map->cells = (map_cell_t*)malloc(sizeof(map_cell_t)*map->size_x*map->size_y);
     ROS_ASSERT(map->cells);
-    for(int i=0;i<map->size_x * map->size_y;i+=100) // Down sampled
+    for(int i=0;i<map->size_x * map->size_y;i+=20) // Down sampled
     {
         if(map_msg.data[i] == 0)
             map->cells[i].occ_state = -1; // Free
@@ -512,9 +512,9 @@ int main(int argc, char **argv)
                 double y =  MAP_WYGY(map_, it->second);
                 double distance = sqrt(pow(x - target_x, 2) + pow(y - target_x, 2));
 
-                if (distance < target_distance + distance_bound ||
-                    distance > target_distance - distance_bound) {
-                    free_space_indices.push_back(*it);
+                if (distance > target_distance + distance_bound ||
+                    distance < target_distance - distance_bound) {
+                    it = free_space_indices.erase(it);
                 } else {
                     ++it;
                 }
