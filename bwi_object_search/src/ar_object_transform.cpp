@@ -72,19 +72,19 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
                                  pose_before.header.frame_id,
                                  pose_transformed);
 
-          // Set detection range
-          if (pose_before.pose.position.z > range_threshold) {
-              continue;
-          }
+          // // Set detection range
+          // if (pose_before.pose.position.z > range_threshold) {
+          //     continue;
+          // }
 
-          // Set global z threshold
-          if (pose_transformed.pose.position.z > z_upper_threshold ||
-              pose_transformed.pose.position.z < z_lower_threshold) {
-              continue;
-          }
-          // ROS_INFO("\t(%f, %f, %f)", pose_transformed.pose.position.x,
-          //          pose_transformed.pose.position.y,
-          //          pose_transformed.pose.position.z);
+          // // Set global z threshold
+          // if (pose_transformed.pose.position.z > z_upper_threshold ||
+          //     pose_transformed.pose.position.z < z_lower_threshold) {
+          //     continue;
+          // }
+          ROS_INFO("\t(%f, %f, %f)", pose_transformed.pose.position.x,
+                   pose_transformed.pose.position.y,
+                   pose_transformed.pose.position.z);
 
 
           // Process the temp list to pick out both comfirmed objects and

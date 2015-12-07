@@ -55,7 +55,7 @@ ros::Publisher   ar_pose_trans_pub;
 std::vector<ObjectStamped> temp_object_list;
 std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/relation_data.txt";
 
-ros::Duration time_threshold (5);
+ros::Duration time_threshold (10);
 double distance_threshold = 1.0;
 int count_threshold = 10;
 double range_threshold = 10.0;             // Limit the range the robot can detect objects
@@ -274,6 +274,10 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
                      // TODO move element to data container
                      // std::time_t result = std::time(nullptr);
                      std::cout << "(" << it->id << ":" << it->count << ") Observed" << std::endl;
+                     if (it->id == 0) {
+                         ROS_INFO("Object found!");
+                         exit(0);
+                     }
                      if(std::find(seen_id_list.begin(), seen_id_list.end(), it->id) != seen_id_list.end()) {
                          /* v contains x */
                          std::cout << "Seen it" << std::endl;
@@ -412,6 +416,24 @@ int main(int argc, char **argv)
     }
     ROS_INFO("Got map, running main loop");
 
+    // Spin
+    ROS_INFO("Spinning");
+    geometry_msgs::Twist rotate;
+    rotate.angular.z = 0.3;
+
+    ros::Time start_time = ros::Time::now();
+    ros::Duration timeout(15.0); // Timeout of 2 seconds
+    while(ros::Time::now() - start_time < timeout) {
+        cmd_vel_pub.publish(rotate);
+        ros::spinOnce();
+    }
+
+    // ros::Time start_time = ros::Time::now();
+    // ros::Duration timeout(7.0); // Timeout of 2 seconds
+    // while(ros::Time::now() - start_time < timeout) {
+    //     ros::spinOnce();
+    // }
+
 
     // Read file and build relation
     std::ifstream          file("/home/users/wxie/catkin_ws/src/bwi_will/bwi_object_search/relation_data_bak.txt");
@@ -527,7 +549,7 @@ int main(int argc, char **argv)
         std::cout<<std::endl;
         // TODO Clear lists
         publishFreeSpace();
-
+        ros::spinOnce();
 
 ////////////////////
 
