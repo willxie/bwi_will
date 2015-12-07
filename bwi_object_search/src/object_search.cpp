@@ -179,7 +179,7 @@ int main(int argc, char **argv)
     locations.emplace_back(-8.21, -11.38);
     locations.emplace_back(-14.00, -9.05);
     locations.emplace_back(-14.00, -4.99);
-    locations.emplace_back(-8.38, -6.07);
+    // locations.emplace_back(-8.38, -6.07); // Localization error
     locations.emplace_back(-16.76, -4.22);
     locations.emplace_back(-14.19, -1.37);
     locations.emplace_back(-14.19, -1.37);

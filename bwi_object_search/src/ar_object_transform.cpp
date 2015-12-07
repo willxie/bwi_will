@@ -22,12 +22,14 @@ struct ObjectStamped {
 std::vector<ObjectStamped> temp_object_list;
 std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/relation_data.txt";
 
-ros::Duration time_threshold (5);
+ros::Duration time_threshold (3);
 double distance_threshold = 1.0;
 int count_threshold = 20;
-double range_threshold = 2.0;             // Limit the range the robot can detect objects
-double z_upper_threshold = 1.00;
-double z_lower_threshold = 0.55;
+double range_max_threshold = 2.00;            // Limit the range the robot can detect objects
+double range_min_threshold = 0.25;             // Limit the range the robot can detect objects
+double z_upper_threshold = 1.29;
+double z_lower_threshold = 0.88;
+
 
 
 void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
@@ -72,16 +74,17 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
                                  pose_before.header.frame_id,
                                  pose_transformed);
 
-          // // Set detection range
-          // if (pose_before.pose.position.z > range_threshold) {
-          //     continue;
-          // }
+          // Set detection range
+          if (pose_before.pose.position.z > range_max_threshold ||
+              pose_before.pose.position.z < range_min_threshold ) {
+              continue;
+          }
 
-          // // Set global z threshold
-          // if (pose_transformed.pose.position.z > z_upper_threshold ||
-          //     pose_transformed.pose.position.z < z_lower_threshold) {
-          //     continue;
-          // }
+          // Set global z threshold
+          if (pose_transformed.pose.position.z > z_upper_threshold ||
+              pose_transformed.pose.position.z < z_lower_threshold) {
+              continue;
+          }
           ROS_INFO("\t(%f, %f, %f)", pose_transformed.pose.position.x,
                    pose_transformed.pose.position.y,
                    pose_transformed.pose.position.z);

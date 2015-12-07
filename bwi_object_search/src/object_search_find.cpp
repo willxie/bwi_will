@@ -59,8 +59,8 @@ ros::Duration time_threshold (10);
 double distance_threshold = 1.0;
 int count_threshold = 10;
 double range_threshold = 10.0;             // Limit the range the robot can detect objects
-double z_upper_threshold = 1.00;
-double z_lower_threshold = 0.55;
+double z_upper_threshold = 1.29;
+double z_lower_threshold = 0.88;
 
 std::vector<int> seen_id_list;
 std::vector<double>  seen_id_x_list;
