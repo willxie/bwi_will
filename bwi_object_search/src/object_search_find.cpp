@@ -67,7 +67,8 @@ double z_upper_threshold = 1.29;
 double z_lower_threshold = 0.88;
 
 // Filtering possible positions
-int dense_count_threshold = 10;
+int map_sample_increment = 15;    // The following two variables are codepedent on each other
+int dense_count_threshold = 50;
 double dense_radius = 1.0;
 
 std::vector<int> seen_id_list;
@@ -217,7 +218,7 @@ convertMap( const nav_msgs::OccupancyGrid& map_msg )
     // Convert to player format
     map->cells = (map_cell_t*)malloc(sizeof(map_cell_t)*map->size_x*map->size_y);
     ROS_ASSERT(map->cells);
-    for(int i=0;i<map->size_x * map->size_y;i+=20) // Down sampled
+    for(int i=0;i<map->size_x * map->size_y;i+=map_sample_increment) // Down sampled
     {
         if(map_msg.data[i] == 0)
             map->cells[i].occ_state = -1; // Free
