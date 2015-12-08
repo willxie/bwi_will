@@ -174,8 +174,10 @@ int main(int argc, char **argv)
     // locations.emplace_back(-47.67, -7.75);  // Robot soccer field
     // locations.emplace_back(-19.18, -4.95);  // Printer
     // locations.emplace_back(-13.97, -11.90); // North front student desk intersection
-    locations.emplace_back(-30.22, -11.56);
-    locations.emplace_back(-13.88, -11.88);
+    locations.emplace_back(-39.22, -11.56);
+    // locations.emplace_back(-30.22, -11.56);
+    locations.emplace_back(-14.25, -16.33);
+
     locations.emplace_back(-8.21, -11.38); // Also
     locations.emplace_back(-14.00, -9.05);
     locations.emplace_back(-14.00, -4.99);
