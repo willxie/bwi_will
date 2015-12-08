@@ -66,6 +66,10 @@ double range_threshold = 10.0;             // Limit the range the robot can dete
 double z_upper_threshold = 1.29;
 double z_lower_threshold = 0.88;
 
+// Filtering possible positions
+int dense_count_threshold = 10;
+double dense_radius = 1.0;
+
 std::vector<int> seen_id_list;
 std::vector<double>  seen_id_x_list;
 std::vector<double>  seen_id_y_list;
@@ -142,7 +146,7 @@ void publishFreeSpace() {
 
     loc_free_pub.publish(cloud_msg);
 
-    ROS_INFO("Free location size: %d", (int)free_space_indices.size());
+    ROS_INFO("Free location size: %d\tweights size: %d", (int)free_space_indices.size(),  (int)free_space_weights.size());
 }
 
 
@@ -179,11 +183,11 @@ void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& 
             double loc_y =  MAP_WYGY(map_, it->second);
 
             if (isInForbiddenCircle(forbidden_circle_x, forbidden_circle_y,  forbidden_circle_radius, loc_x, loc_y)) {
-                 it = free_space_indices.erase(it);
-             } else {
-                 ++it;
-             }
-          }
+                it = free_space_indices.erase(it);
+            } else {
+                ++it;
+            }
+        }
         publishFreeSpace();
 
         // // Make particles in the circle in front of the robot lower prob
@@ -232,12 +236,46 @@ void handleMapMessage(const nav_msgs::OccupancyGrid& msg)
 
     // Index of free space
     free_space_indices.resize(0);
-    for(int i = 0; i < map_->size_x; i++)
-        for(int j = 0; j < map_->size_y; j++)
+    for(int i = 0; i < map_->size_x; i++) {
+        for(int j = 0; j < map_->size_y; j++) {
             if(map_->cells[MAP_INDEX(map_,i,j)].occ_state == -1) {
                 free_space_indices.push_back(std::make_pair(i,j));
-                free_space_weights.push_back(1.0);
+                // free_space_weights.push_back(1.0);
             }
+        }
+    }
+
+    // Remove all regions not dense enough
+    for (auto it = free_space_indices.begin(); it != free_space_indices.end();) {
+        double self_x = MAP_WXGX(map_, it->first);
+        double self_y =  MAP_WYGY(map_, it->second);
+
+        int neighbor_count = 0;
+
+        // Find the number of points within a radius
+        for (auto iit = free_space_indices.begin(); iit != free_space_indices.end(); ++iit) {
+            double loc_x = MAP_WXGX(map_, iit->first);
+            double loc_y =  MAP_WYGY(map_, iit->second);
+            if (loc_x < (self_x + dense_radius) &&
+                loc_x > (self_x - dense_radius) &&
+                loc_y < (self_y + dense_radius) &&
+                loc_y > (self_y - dense_radius)) {
+                neighbor_count++;
+            }
+        }
+
+        // Remove ones that are too remote since they are likely to be outliers
+        if (neighbor_count < dense_count_threshold) {
+            it = free_space_indices.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    // Then add the weights
+    for (auto it = free_space_indices.begin(); it != free_space_indices.end(); ++it) {
+        free_space_weights.push_back(1.0);
+    }
 }
 
 
@@ -254,6 +292,7 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
 
     publishFreeSpace();
     has_map = true;
+    ROS_INFO("Map processing done");
 }
 
 void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
@@ -461,11 +500,12 @@ int main(int argc, char **argv)
 
     ROS_INFO("Start");
 
-    while (!has_map) {
+    do {
         ros::spinOnce();
         ROS_INFO("Waiting for map...");
         ros::Duration(1.0).sleep();
-    }
+    } while (!has_map);
+
     ROS_INFO("Got map, running main loop");
 
 
