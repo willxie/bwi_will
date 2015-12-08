@@ -178,29 +178,34 @@ void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& 
         // ROS_INFO("\f(%f, %f, %f)", roll, pitch, yaw);
         // ROS_INFO("\f(%f, %f, %f)", current_position.position.x, current_position.position.y, current_position.position.z);
 
-        // TODO Try erase first
-        for (auto it = free_space_indices.begin(); it != free_space_indices.end();) {
-            double loc_x = MAP_WXGX(map_, it->first);
-            double loc_y =  MAP_WYGY(map_, it->second);
+        // // Try erase first
+        // for (auto it = free_space_indices.begin(); it != free_space_indices.end();) {
+        //     double loc_x = MAP_WXGX(map_, it->first);
+        //     double loc_y =  MAP_WYGY(map_, it->second);
+
+        //     if (isInForbiddenCircle(forbidden_circle_x, forbidden_circle_y,  forbidden_circle_radius, loc_x, loc_y)) {
+        //         it = free_space_indices.erase(it);
+        //     } else {
+        //         ++it;
+        //     }
+        // }
+        // publishFreeSpace();
+
+        // Make particles in the circle in front of the robot lower prob
+        for (int i = 0; i < free_space_indices.size(); ++i) {
+            assert(free_space_indices.size() == free_space_weights.size());
+
+            std::pair<int,int>& fsc = free_space_indices[i];
+
+            double loc_x = MAP_WXGX(map_, fsc.first);
+            double loc_y =  MAP_WYGY(map_, fsc.second);
 
             if (isInForbiddenCircle(forbidden_circle_x, forbidden_circle_y,  forbidden_circle_radius, loc_x, loc_y)) {
-                it = free_space_indices.erase(it);
-            } else {
-                ++it;
+                free_space_weight[i] = free_space_weight_min;
             }
         }
         publishFreeSpace();
 
-        // // Make particles in the circle in front of the robot lower prob
-        // for (int i = 0; i < free_space_indices.size(); ++i) {
-        //     std::pair<int,int>& fsc = free_space_indices[i];
-        //     double loc_x = MAP_WXGX(map_, fsc.first);
-        //     double loc_y =  MAP_WYGY(map_, fsc.second);
-        //     // If point is in circle, lower weight
-        //     if (isInForbiddenenCircle(forbidden_circle_x, forbidden_circle_y, forbidden_circle_radius, loc_x, loc_y)) {
-        //         free_space_weight[i] = free_space_weight_min;
-        //     }
-        // }
     }
 }
 
@@ -291,7 +296,8 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
 
     handleMapMessage(*msg);
 
-    publishFreeSpace();
+    // publishFreeSpace();
+
     has_map = true;
     ROS_INFO("Map processing done");
 }
@@ -437,38 +443,9 @@ int main(int argc, char **argv)
 
     std::mt19937 gen(std::time(0));
 
-    // TODO: YAML
-    // Some predefined locations
     std::vector<std::pair<double, double> > locations; // (x, y)
-    // locations.emplace_back(-35.0, -11.5);   // In front of my computer
-    // locations.emplace_back(-30.03, -4.73);  // Kitchen
-    // locations.emplace_back(-47.67, -7.75);  // Robot soccer field
-    // locations.emplace_back(-19.18, -4.95);  // Printer
-    // locations.emplace_back(-13.97, -11.90); // North front student desk intersection
-    locations.emplace_back(-30.22, -11.56);
-    locations.emplace_back(-13.88, -11.88);
-    locations.emplace_back(-8.21, -11.38);
-    locations.emplace_back(-14.00, -9.05);
-    locations.emplace_back(-14.00, -4.99);
-    locations.emplace_back(-8.38, -6.07);
-    locations.emplace_back(-16.76, -4.22);
-    // locations.emplace_back(-14.19, -1.37);
-    // locations.emplace_back(-14.19, -1.37);
-    // locations.emplace_back(-14.19, -1.37);
 
-    // const string locations_yaml_path = ros::package::getPath("bwi_object_search") +
-    //     "yaml/locations.yaml";
-
-    // YAML::Node locations = YAML::LoadFile(locations_yaml_path.c_str());
-
-    // for (YAML::const_iterator it = locations.begin(); it != locations.end(); ++it)
-    // {
-    //     ROS_INFO("%S");
-    // }
-
-    // parser.GetNextDocument(doc);
-
-    ros::init(argc, argv, "object_search");
+    ros::init(argc, argv, "object_search_find");
     ros::NodeHandle nh;
 
     signal(SIGINT, mySigintHandler);
