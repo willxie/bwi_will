@@ -176,14 +176,14 @@ int main(int argc, char **argv)
     // locations.emplace_back(-13.97, -11.90); // North front student desk intersection
     locations.emplace_back(-30.22, -11.56);
     locations.emplace_back(-13.88, -11.88);
-    locations.emplace_back(-8.21, -11.38);
+    locations.emplace_back(-8.21, -11.38); // Also
     locations.emplace_back(-14.00, -9.05);
     locations.emplace_back(-14.00, -4.99);
-    // locations.emplace_back(-8.38, -6.07); // Localization error
+    locations.emplace_back(-8.38, -6.07); // Localization error
     locations.emplace_back(-16.76, -4.22);
     locations.emplace_back(-14.19, -1.37);
-    locations.emplace_back(-14.19, -1.37);
-    locations.emplace_back(-14.19, -1.37);
+    locations.emplace_back(-11.72, -12.68);
+    locations.emplace_back(-10.96, -4.82);
 
     // const string locations_yaml_path = ros::package::getPath("bwi_object_search") +
     //     "yaml/locations.yaml";
@@ -260,7 +260,8 @@ int main(int argc, char **argv)
         goal.target_pose.pose.position.x = new_location.first;
         goal.target_pose.pose.position.y = new_location.second;
 
-        theta += 0.5;
+        float r = 3.14 * 2 * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+        theta += r;
         if (theta > 2.0 * M_PI) {
             theta -= 2.0 * M_PI;
         }

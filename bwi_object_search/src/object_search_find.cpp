@@ -71,10 +71,12 @@ int map_sample_increment = 15;    // The following two variables are codepedent 
 int dense_count_threshold = 50;
 double dense_radius = 1.0;
 
+// Weight adjustments
+double free_space_weight_min = 0.1;
+
 std::vector<int> seen_id_list;
 std::vector<double>  seen_id_x_list;
 std::vector<double>  seen_id_y_list;
-
 std::vector<double>    distance_vector;
 
 
@@ -201,7 +203,7 @@ void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& 
             double loc_y =  MAP_WYGY(map_, fsc.second);
 
             if (isInForbiddenCircle(forbidden_circle_x, forbidden_circle_y,  forbidden_circle_radius, loc_x, loc_y)) {
-                free_space_weight[i] = free_space_weight_min;
+                free_space_weights[i] = free_space_weight_min;
             }
         }
         publishFreeSpace();
