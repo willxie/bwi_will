@@ -9,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <random>
 
 
 #include <move_base_msgs/MoveBaseAction.h>
@@ -31,11 +32,14 @@
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/PoseArray.h"
 #include "geometry_msgs/Pose.h"
-
-
-
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
+
+// #include <btQuaternion.h>
+
+// This for transforming quanterion to RPY
+// #include "tf/transform_datatypes.h"
+// #include "tf/LinearMath/btMatrix3x3.h"
 
 #include <tf/transform_listener.h>
 #include <ar_pose/ARMarkers.h>
@@ -76,7 +80,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 geometry_msgs::Pose current_position;
 
 std::vector<std::pair<int,int> > free_space_indices;
-std::vector<double> free_space_weight;
+std::vector<double> free_space_weights;
 std::string map_frame = "level_mux/map";
 // std::string map_frame = "map";
 
@@ -119,10 +123,80 @@ int getch()
   return c;
 }
 
+void publishFreeSpace() {
+    // Publish all free locations
+    geometry_msgs::PoseArray cloud_msg;
+    cloud_msg.header.stamp = ros::Time::now();
+    cloud_msg.header.frame_id = map_frame;
+    cloud_msg.poses.resize(free_space_indices.size());
+    for (int i = 0; i < free_space_indices.size(); ++i) {
+        auto& loc = free_space_indices[i];
 
+        // ROS_INFO("(%d, %d)", loc.first, loc.second);
+        tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(0),
+                                 tf::Vector3(MAP_WXGX(map_, loc.first),
+                                             MAP_WYGY(map_, loc.second),
+                                             0)),
+                        cloud_msg.poses[i]);
+    }
+
+    loc_free_pub.publish(cloud_msg);
+
+    ROS_INFO("Free location size: %d", (int)free_space_indices.size());
+}
+
+
+bool isInForbiddenCircle(double circle_x, double circle_y, double circle_radius, double target_x, double target_y) {
+    return (sqrt(pow(target_x - circle_x, 2) + pow(target_y - circle_y, 2)) < circle_radius);
+}
 
 void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
+
     current_position = msg->pose.pose;
+
+    // Only lower weight based on location every second
+    static ros::Time last_amcl_time = ros::Time::now();
+    ros::Time now = ros::Time::now();
+    ros::Duration amcl_wait (1.0);
+    if (now - last_amcl_time > amcl_wait) {
+        last_amcl_time = now;
+
+        // Cast the forbidden circle
+        // Find the circle in front of the robot
+        tf::Quaternion q (current_position.orientation.x, current_position.orientation.y, current_position.orientation.z, current_position.orientation.w);
+        double roll, pitch, yaw;
+        tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+        double forbidden_circle_radius = 0.5;
+
+        double forbidden_circle_x = current_position.position.x +  forbidden_circle_radius * cos(yaw);
+        double forbidden_circle_y = current_position.position.y +  forbidden_circle_radius * sin(yaw);
+        // ROS_INFO("\f(%f, %f, %f)", roll, pitch, yaw);
+        // ROS_INFO("\f(%f, %f, %f)", current_position.position.x, current_position.position.y, current_position.position.z);
+
+        // TODO Try erase first
+        for (auto it = free_space_indices.begin(); it != free_space_indices.end();) {
+            double loc_x = MAP_WXGX(map_, it->first);
+            double loc_y =  MAP_WYGY(map_, it->second);
+
+            if (isInForbiddenCircle(forbidden_circle_x, forbidden_circle_y,  forbidden_circle_radius, loc_x, loc_y)) {
+                 it = free_space_indices.erase(it);
+             } else {
+                 ++it;
+             }
+          }
+        publishFreeSpace();
+
+        // // Make particles in the circle in front of the robot lower prob
+        // for (int i = 0; i < free_space_indices.size(); ++i) {
+        //     std::pair<int,int>& fsc = free_space_indices[i];
+        //     double loc_x = MAP_WXGX(map_, fsc.first);
+        //     double loc_y =  MAP_WYGY(map_, fsc.second);
+        //     // If point is in circle, lower weight
+        //     if (isInForbiddenenCircle(forbidden_circle_x, forbidden_circle_y, forbidden_circle_radius, loc_x, loc_y)) {
+        //         free_space_weight[i] = free_space_weight_min;
+        //     }
+        // }
+    }
 }
 
 map_t*
@@ -162,34 +236,10 @@ void handleMapMessage(const nav_msgs::OccupancyGrid& msg)
         for(int j = 0; j < map_->size_y; j++)
             if(map_->cells[MAP_INDEX(map_,i,j)].occ_state == -1) {
                 free_space_indices.push_back(std::make_pair(i,j));
-                free_space_weight.push_back(1.0);
+                free_space_weights.push_back(1.0);
             }
-
-
 }
 
-
-void publishFreeSpace() {
-    // Publish all free locations
-    geometry_msgs::PoseArray cloud_msg;
-    cloud_msg.header.stamp = ros::Time::now();
-    cloud_msg.header.frame_id = map_frame;
-    cloud_msg.poses.resize(free_space_indices.size());
-    for (int i = 0; i < free_space_indices.size(); ++i) {
-        auto& loc = free_space_indices[i];
-
-        // ROS_INFO("(%d, %d)", loc.first, loc.second);
-        tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(0),
-                                 tf::Vector3(MAP_WXGX(map_, loc.first),
-                                             MAP_WYGY(map_, loc.second),
-                                             0)),
-                        cloud_msg.poses[i]);
-    }
-
-    loc_free_pub.publish(cloud_msg);
-
-    ROS_INFO("Free location size: %d", (int)free_space_indices.size());
-}
 
 void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
     ROS_INFO("Map received");
@@ -345,6 +395,8 @@ int main(int argc, char **argv)
 {
     srand(time(NULL));
 
+    std::mt19937 gen(std::time(0));
+
     // TODO: YAML
     // Some predefined locations
     std::vector<std::pair<double, double> > locations; // (x, y)
@@ -396,11 +448,11 @@ int main(int argc, char **argv)
     loc_visited_pub = nh.advertise<geometry_msgs::PoseArray>("loc_visited", 2, true);
 
     // Create a ROS subscriber
-    ros::Subscriber sub = nh.subscribe ("ar_pose_marker", 1, processing);
+    // ros::Subscriber sub = nh.subscribe ("ar_pose_marker", 1, processing);
 
     // ros::spin();
 
-    // amcl_pose_sub = nh.subscribe("amcl_pose", 100, amclPoseCallback);
+    amcl_pose_sub = nh.subscribe("amcl_pose", 100, amclPoseCallback);
     map_sub = nh.subscribe(map_frame, 1, mapCallback);
 
     double theta = M_PI;
@@ -416,6 +468,11 @@ int main(int argc, char **argv)
     }
     ROS_INFO("Got map, running main loop");
 
+
+
+    ros::spin();
+
+
     // Spin
     ROS_INFO("Spinning");
     geometry_msgs::Twist rotate;
@@ -427,13 +484,6 @@ int main(int argc, char **argv)
         cmd_vel_pub.publish(rotate);
         ros::spinOnce();
     }
-
-    // ros::Time start_time = ros::Time::now();
-    // ros::Duration timeout(7.0); // Timeout of 2 seconds
-    // while(ros::Time::now() - start_time < timeout) {
-    //     ros::spinOnce();
-    // }
-
 
     // Read file and build relation
     std::ifstream          file("/home/users/wxie/catkin_ws/src/bwi_will/bwi_object_search/relation_data_bak.txt");
@@ -508,11 +558,8 @@ int main(int argc, char **argv)
         std::cout << distance << " ";
     }
     std::cout << std::endl;
-    // exit(0);
 
-
-    while (ros::ok())
-    {
+    while (ros::ok()) {
         // Filter out target poses
         // std::vector<std::pair<int,int> > free_space_indices;
     // std::vector<double>    distance_vector;
@@ -564,16 +611,23 @@ int main(int argc, char **argv)
         // ROS_INFO("Destination: #%d", location_num);
 
 
-
-        // Pick a random location uniformly distributed on the map
-        // std::piecewise_constant_distribution<> d(free_space_indices.begin(), free_space_indices.end(), free_space_weights.begin());
-        std::random_shuffle ( free_space_indices.begin(), free_space_indices.end() );
-        std::pair<int,int> fsc = free_space_indices.back();
-        free_space_indices.pop_back(); // TODO replacement or not?
+        // Pick a random point based on weight
+        std::discrete_distribution<int> distribution (free_space_weights.begin(), free_space_weights.end());
+        int sampled_index = distribution(gen); // Sample without replacement
+        std::pair<int,int> fsc = free_space_indices[sampled_index];
         double loc_x = MAP_WXGX(map_, fsc.first);
         double loc_y =  MAP_WYGY(map_, fsc.second);
         std::pair<double, double> new_location = std::make_pair<double,double>((double)loc_x, (double)loc_y);
-        ROS_INFO("Destination: (%f, %f)", loc_x, loc_y);
+
+        // // Pick a random location uniformly distributed on the map
+        // // std::piecewise_constant_distribution<> d(free_space_indices.begin(), free_space_indices.end(), free_space_weights.begin());
+        // std::random_shuffle ( free_space_indices.begin(), free_space_indices.end() );
+        // std::pair<int,int> fsc = free_space_indices.back();
+        // free_space_indices.pop_back(); // TODO replacement or not?
+        // double loc_x = MAP_WXGX(map_, fsc.first);
+        // double loc_y =  MAP_WYGY(map_, fsc.second);
+        // std::pair<double, double> new_location = std::make_pair<double,double>((double)loc_x, (double)loc_y);
+        // ROS_INFO("Destination: (%f, %f)", loc_x, loc_y);
 
         move_base_msgs::MoveBaseGoal goal;
         goal.target_pose.header.frame_id = map_frame;
