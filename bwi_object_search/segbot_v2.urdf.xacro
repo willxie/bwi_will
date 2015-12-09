@@ -45,8 +45,9 @@
 
   <!-- add the usb camera here -->
   <xacro:kinect_camera name="usb_camera" parent="laptop_base_plate">
-      <origin xyz="0.135 0.0  0.25" rpy="${-M_PI/2} 0 ${M_PI/2}" />
-  </xacro:kinect_camera>
+      <!-- <origin xyz="0.135 0.0  0.25" rpy="${-M_PI/2} 0 ${M_PI/2}" /> -->
+      <origin xyz="0.135 0.085  0.285" rpy="${-M_PI/2} 0 ${-M_PI/2}" />
+    </xacro:kinect_camera> <!---->
 
 
 </robot>
