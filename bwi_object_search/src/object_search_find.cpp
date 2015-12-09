@@ -70,7 +70,7 @@ ros::Publisher   ar_pose_trans_pub;
 
 // This list is used for denoise
 std::vector<ObjectStamped> temp_object_list;
-std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/relation_data_combined.txt";
+std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/relation_data_fixed.txt";
 
 ros::Duration time_threshold (2);
 double distance_threshold = 1.0;
@@ -90,10 +90,10 @@ double free_space_weight_start = 1.0;
 double free_space_weight_min = 0.1;
 
 // Object data
-double variance_avg_max_threshold  = 3.50;
-double variance_avg_min_threshold  = 0.25;
+double variance_avg_max_threshold  = 1.00;
+double variance_avg_min_threshold  = 0.01;
 
-double target_id = 13;
+double target_id = 0;
 double target_x = -15.518;
 double target_y = -15.898;
 // double target_x = -12.3969;
@@ -223,13 +223,14 @@ bool isInForbiddenCircle(double circle_x, double circle_y, double circle_radius,
 void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
     static bool first_time = true;
     // Keep track of distance traveled
-    geometry_msgs::Pose prev_position = current_position;
-    current_position = msg->pose.pose;
-    if (!first_time) {
-        current_distance += sqrt(pow(prev_position.position.x - current_position.position.x, 2) + pow(prev_position.position.y - current_position.position.y, 2));
+    if (first_time) {
         first_time = false;
+    } else{
+        current_distance += sqrt(pow(msg->pose.pose.position.x - current_position.position.x, 2) + pow(msg->pose.pose.position.y - current_position.position.y, 2));
+
     }
-    std::cout << "current_distance: " << current_distance << std::endl;
+    current_position = msg->pose.pose;
+    // std::cout << "current_distance: " << current_distance << std::endl;
 
 
     // Only lower weight based on location every second
@@ -463,7 +464,6 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
                          exit(0);
                      }
 
-                     ROS_INFO("Landmark found! ID = %d", it->id);
                      // Found something else
                      for (auto& od :object_distribution_list) {
                          if (od.seen) {
@@ -472,7 +472,7 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
                          if (od.id != it->id) {
                              continue;
                          }
-
+                         ROS_INFO("Landmark found! ID = %d", it->id);
                          double stdev = sqrt((od.var_x + od.var_y) / 2);   // Average standard deviation
                          double v_gaussian = calculateGaussianValue(od.distance, stdev, od.distance);
                          for (int i = 0; i < free_space_indices.size(); ++i) {
@@ -485,7 +485,8 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
 
                              // Add weight based on distance from the tag
                              // V is expected from relationship data, p is position particle distance from the beacon
-                             double p_distance = sqrt(pow(loc_x - od.mean_x, 2) + pow(loc_y - od.mean_y, 2));
+                             // double p_distance = sqrt(pow(loc_x - od.mean_x, 2) + pow(loc_y - od.mean_y, 2));
+                             double p_distance = sqrt(pow(loc_x - it->pose_stamped.pose.position.x, 2) + pow(loc_y - it->pose_stamped.pose.position.y, 2));
                              double p_gaussian = calculateGaussianValue(p_distance, stdev, od.distance);
 
                              //     free_space_weights[i] = free_space_weight_min;
@@ -692,8 +693,16 @@ int main(int argc, char **argv)
         }
     }
 
-    // // Process parsed data
-    distance_vector.push_back(0); // Dummy for the target
+    // Get values for target if target passes the variance test
+    for (auto& od : object_distribution_list) {
+        if (od.id == target_id) {
+            target_x = od.mean_x;
+            target_y = od.mean_y;
+            break;
+        }
+    }
+    std::cout << "Target id: " << target_id << "  = " <<target_x << ", " << target_y << std::endl;
+
     // Loop through each landmark we can use
     for (auto& od : object_distribution_list) {
         if (od.id == target_id) {
