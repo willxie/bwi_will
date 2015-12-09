@@ -24,7 +24,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan
+    SyncSource: USB Camera
 Visualization Manager:
   Class: ""
   Displays:
@@ -330,7 +330,7 @@ Visualization Manager:
       Color: 25; 255; 0
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 0
@@ -346,7 +346,7 @@ Visualization Manager:
       Topic: /scan_filtered
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 0.5
       Class: rviz/Map
       Color Scheme: map
@@ -374,7 +374,7 @@ Visualization Manager:
       Marker Topic: /move_base/EBandPlannerROS/eband_visualization
       Name: Eband Bubbles
       Namespaces:
-        bubbles: true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 0.3
@@ -389,10 +389,10 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: costmap
       Draw Behind: true
-      Enabled: true
+      Enabled: false
       Name: Local Costmap
       Topic: /move_base/local_costmap/costmap
-      Value: true
+      Value: false
     - Arrow Length: 0.3
       Class: rviz/PoseArray
       Color: 255; 25; 0
@@ -465,22 +465,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 108.945
+      Distance: 83.1522
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -15.8262
-        Y: -1.98178
-        Z: -57.7307
+        X: -13.3446
+        Y: 0.524864
+        Z: -57.3337
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 1.4448
+      Pitch: 1.4148
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.68534
+      Yaw: 4.70534
     Saved: ~
 Window Geometry:
   Displays:
@@ -500,5 +500,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1301
-  X: 55
-  Y: 14
+  X: 65
+  Y: 24

@@ -22,7 +22,7 @@ struct ObjectStamped {
 std::vector<ObjectStamped> temp_object_list;
 std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/relation_data.txt";
 
-ros::Duration time_threshold (3);
+ros::Duration time_threshold (2);
 double distance_threshold = 1.0;
 int count_threshold = 20;
 double range_max_threshold = 2.00;            // Limit the range the robot can detect objects

@@ -80,8 +80,6 @@ int getch()
 
 void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
     current_position = msg->pose.pose;
-
-
 }
 
 map_t*
@@ -174,10 +172,10 @@ int main(int argc, char **argv)
     // locations.emplace_back(-47.67, -7.75);  // Robot soccer field
     // locations.emplace_back(-19.18, -4.95);  // Printer
     // locations.emplace_back(-13.97, -11.90); // North front student desk intersection
+
     locations.emplace_back(-39.22, -11.56);
     // locations.emplace_back(-30.22, -11.56);
     locations.emplace_back(-14.25, -16.33);
-
     locations.emplace_back(-8.21, -11.38); // Also
     locations.emplace_back(-14.00, -9.05);
     locations.emplace_back(-14.00, -4.99);
@@ -186,7 +184,9 @@ int main(int argc, char **argv)
     locations.emplace_back(-14.19, -1.37);
     locations.emplace_back(-11.72, -12.68);
     locations.emplace_back(-10.96, -4.82);
-
+    // Target place
+    locations.emplace_back(-14.423,  -15.8629);
+    // locations.emplace_back(-14.936, -16.136);
     // const string locations_yaml_path = ros::package::getPath("bwi_object_search") +
     //     "yaml/locations.yaml";
 

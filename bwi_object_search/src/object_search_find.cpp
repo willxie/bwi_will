@@ -11,6 +11,9 @@
 #include <iostream>
 #include <random>
 
+#include <boost/accumulators/accumulators.hpp>
+
+#include <boost/accumulators/statistics.hpp>
 
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
@@ -53,16 +56,27 @@ struct ObjectStamped {
     int count;                        // Number of time it appeared
 };
 
+struct ObjectDistribution {
+    int id;
+    double mean_x;
+    double mean_y;
+    double var_x;
+    double var_y;
+    double distance;
+    bool seen;
+};
+
 ros::Publisher   ar_pose_trans_pub;
 
 // This list is used for denoise
 std::vector<ObjectStamped> temp_object_list;
-std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/relation_data.txt";
+std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/relation_data_combined.txt";
 
-ros::Duration time_threshold (10);
+ros::Duration time_threshold (2);
 double distance_threshold = 1.0;
-int count_threshold = 10;
-double range_threshold = 10.0;             // Limit the range the robot can detect objects
+int count_threshold = 20;
+double range_max_threshold = 2.00;            // Limit the range the robot can detect objects
+double range_min_threshold = 0.25;             // Limit the range the robot can detect objects
 double z_upper_threshold = 1.29;
 double z_lower_threshold = 0.88;
 
@@ -72,12 +86,28 @@ int dense_count_threshold = 50;
 double dense_radius = 1.0;
 
 // Weight adjustments
+double free_space_weight_start = 1.0;
 double free_space_weight_min = 0.1;
+
+// Object data
+double variance_avg_max_threshold  = 3.50;
+double variance_avg_min_threshold  = 0.25;
+
+double target_id = 13;
+double target_x = -15.518;
+double target_y = -15.898;
+// double target_x = -12.3969;
+// double target_y = -15.9015;
+
+
+std::vector<ObjectDistribution> object_distribution_list;
 
 std::vector<int> seen_id_list;
 std::vector<double>  seen_id_x_list;
 std::vector<double>  seen_id_y_list;
 std::vector<double>    distance_vector;
+
+clock_t begin, end;
 
 
 #include <termios.h>
@@ -85,6 +115,7 @@ std::vector<double>    distance_vector;
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 geometry_msgs::Pose current_position;
+double current_distance = 0;
 
 std::vector<std::pair<int,int> > free_space_indices;
 std::vector<double> free_space_weights;
@@ -94,6 +125,10 @@ std::string map_frame = "level_mux/map";
 map_t* map_;
 bool has_map = false;
 
+// Keep track of runtime
+ros::Time init_time;
+
+bool searching = false;
 
 // List of publisher and subscribers
 // TODO: really need to class-ify this
@@ -130,13 +165,21 @@ int getch()
   return c;
 }
 
+double calculateGaussianValue(double m, double s, double x) {
+    return ( 1 / ( s * sqrt(2*M_PI) ) ) * exp( -0.5 * pow( (x-m)/s, 2.0 ) );
+}
+
 void publishFreeSpace() {
     // Publish all free locations
-    geometry_msgs::PoseArray cloud_msg;
+    geometry_msgs::PoseArray cloud_msg, cloud_msg_2;
     cloud_msg.header.stamp = ros::Time::now();
     cloud_msg.header.frame_id = map_frame;
     cloud_msg.poses.resize(free_space_indices.size());
     for (int i = 0; i < free_space_indices.size(); ++i) {
+        // Don't visualize destinations with low / min prob
+        if (free_space_weights[i] <= 2*free_space_weight_min) {
+            continue;
+        }
         auto& loc = free_space_indices[i];
 
         // ROS_INFO("(%d, %d)", loc.first, loc.second);
@@ -147,9 +190,29 @@ void publishFreeSpace() {
                         cloud_msg.poses[i]);
     }
 
-    loc_free_pub.publish(cloud_msg);
+    // This is for high weight only
+    cloud_msg_2.header.stamp = ros::Time::now();
+    cloud_msg_2.header.frame_id = map_frame;
+    cloud_msg_2.poses.resize(free_space_indices.size());
+    for (int i = 0; i < free_space_indices.size(); ++i) {
+        // Don't visualize destinations with low / min prob
+        if (free_space_weights[i] <= 1.5) {
+            continue;
+        }
+        auto& loc = free_space_indices[i];
 
-    ROS_INFO("Free location size: %d\tweights size: %d", (int)free_space_indices.size(),  (int)free_space_weights.size());
+        // ROS_INFO("(%d, %d)", loc.first, loc.second);
+        tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(0),
+                                 tf::Vector3(MAP_WXGX(map_, loc.first),
+                                             MAP_WYGY(map_, loc.second),
+                                             0)),
+                        cloud_msg_2.poses[i]);
+    }
+
+    loc_free_pub.publish(cloud_msg);
+    loc_visited_pub.publish(cloud_msg_2);
+
+    // ROS_INFO("Free location size: %d\tweights size: %d", (int)free_space_indices.size(),  (int)free_space_weights.size());
 }
 
 
@@ -158,14 +221,24 @@ bool isInForbiddenCircle(double circle_x, double circle_y, double circle_radius,
 }
 
 void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
-
+    static bool first_time = true;
+    // Keep track of distance traveled
+    geometry_msgs::Pose prev_position = current_position;
     current_position = msg->pose.pose;
+    if (!first_time) {
+        current_distance += sqrt(pow(prev_position.position.x - current_position.position.x, 2) + pow(prev_position.position.y - current_position.position.y, 2));
+        first_time = false;
+    }
+    std::cout << "current_distance: " << current_distance << std::endl;
+
 
     // Only lower weight based on location every second
     static ros::Time last_amcl_time = ros::Time::now();
     ros::Time now = ros::Time::now();
     ros::Duration amcl_wait (1.0);
-    if (now - last_amcl_time > amcl_wait) {
+    // Searching is a bool set by the behavior because we don't want the robot to eat up
+    // all the position particles while driving in at the wrong direction
+    if (now - last_amcl_time > amcl_wait && searching) {
         last_amcl_time = now;
 
         // Cast the forbidden circle
@@ -173,7 +246,7 @@ void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& 
         tf::Quaternion q (current_position.orientation.x, current_position.orientation.y, current_position.orientation.z, current_position.orientation.w);
         double roll, pitch, yaw;
         tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
-        double forbidden_circle_radius = 0.5;
+        double forbidden_circle_radius = 1.0;
 
         double forbidden_circle_x = current_position.position.x +  forbidden_circle_radius * cos(yaw);
         double forbidden_circle_y = current_position.position.y +  forbidden_circle_radius * sin(yaw);
@@ -282,7 +355,7 @@ void handleMapMessage(const nav_msgs::OccupancyGrid& msg)
 
     // Then add the weights
     for (auto it = free_space_indices.begin(); it != free_space_indices.end(); ++it) {
-        free_space_weights.push_back(1.0);
+        free_space_weights.push_back(free_space_weight_start);
     }
 }
 
@@ -347,7 +420,9 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
                                  pose_transformed);
 
           // Set detection range
-          if (pose_before.pose.position.z > range_threshold) {
+          // Set detection range
+          if (pose_before.pose.position.z > range_max_threshold ||
+              pose_before.pose.position.z < range_min_threshold ) {
               continue;
           }
 
@@ -364,27 +439,75 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
           // Process the temp list to pick out both comfirmed objects and
           // remove stale objects
           for (auto it = temp_object_list.begin(); it != temp_object_list.end();) {
-             if (pose_transformed.header.stamp - it->pose_stamped.header.stamp > time_threshold) {
-                 // Only Save object loc when it becomes stale.
-                 // This avoids the issue of bias towards object with more screen time
-                 // higher weight
-                 if (it->count > count_threshold) {
-                     // TODO move element to data container
-                     // std::time_t result = std::time(nullptr);
-                     std::cout << "(" << it->id << ":" << it->count << ") Observed" << std::endl;
-                     if (it->id == 0) {
-                         ROS_INFO("Object found!");
+              if (pose_transformed.header.stamp - it->pose_stamped.header.stamp > time_threshold) {
+                  // Only Save object loc when it becomes stale.
+                  // This avoids the issue of bias towards object with more screen time
+                  // higher weight
+                  if (it->count > count_threshold) {
+                      // TODO move element to data container
+                      // std::time_t result = std::time(nullptr);
+                      std::cout << "(" << it->id << ":" << it->count << ") Observed" << std::endl;
+                      // Found the object, we are done
+                      if (it->id == target_id) {
+                          ROS_INFO("Object found!");
+
+                          end = clock();
+
+                          double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+
+                          std::cout<< "elapsed_secs: " << elapsed_secs<<std::endl;
+
+                          std::cout << "current_distance: " << current_distance << std::endl;
+
+                         // ros::Time::now() - init_time);
                          exit(0);
                      }
-                     if(std::find(seen_id_list.begin(), seen_id_list.end(), it->id) != seen_id_list.end()) {
-                         /* v contains x */
-                         std::cout << "Seen it" << std::endl;
-                     } else {
-                         /* v does not contain x */
-                         seen_id_list.push_back(it->id);
-                         seen_id_x_list.push_back(it->pose_stamped.pose.position.x);
-                         seen_id_y_list.push_back(it->pose_stamped.pose.position.y);
+
+                     ROS_INFO("Landmark found! ID = %d", it->id);
+                     // Found something else
+                     for (auto& od :object_distribution_list) {
+                         if (od.seen) {
+                             continue;
+                         }
+                         if (od.id != it->id) {
+                             continue;
+                         }
+
+                         double stdev = sqrt((od.var_x + od.var_y) / 2);   // Average standard deviation
+                         double v_gaussian = calculateGaussianValue(od.distance, stdev, od.distance);
+                         for (int i = 0; i < free_space_indices.size(); ++i) {
+                             assert(free_space_indices.size() == free_space_weights.size());
+
+                             std::pair<int,int>& fsc = free_space_indices[i];
+
+                             double loc_x = MAP_WXGX(map_, fsc.first);
+                             double loc_y =  MAP_WYGY(map_, fsc.second);
+
+                             // Add weight based on distance from the tag
+                             // V is expected from relationship data, p is position particle distance from the beacon
+                             double p_distance = sqrt(pow(loc_x - od.mean_x, 2) + pow(loc_y - od.mean_y, 2));
+                             double p_gaussian = calculateGaussianValue(p_distance, stdev, od.distance);
+
+                             //     free_space_weights[i] = free_space_weight_min;
+                             // Score normalized to 1
+                             double distance_weight = (v_gaussian - fabs(p_gaussian - v_gaussian)) / v_gaussian;
+                             // Let's double that
+                             distance_weight *= 10;
+
+                             free_space_weights[i] += distance_weight;
+                         }
+                         publishFreeSpace();
                      }
+////////////////////////////////////////
+                     // if (std::find(seen_id_list.begin(), seen_id_list.end(), it->id) != seen_id_list.end()) {
+                     //     /* v contains x */
+                     //     std::cout << "Seen it" << std::endl;
+                     // } else {
+                     //     /* v does not contain x */
+                     //     seen_id_list.push_back(it->id);
+                     //     seen_id_x_list.push_back(it->pose_stamped.pose.position.x);
+                     //     seen_id_y_list.push_back(it->pose_stamped.pose.position.y);
+                     // }
 
                  }
                  it = temp_object_list.erase(it);
@@ -425,11 +548,11 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
           //          pose_transformed.pose.position.y,
           //          pose_transformed.pose.position.z);
 
-          // Debug
-          for (auto& os : temp_object_list) {
-              std::cout << "(" << os.id << ":" << os.count << ")-->";
-          }
-          std::cout << std::endl;
+          // // Debug
+          // for (auto& os : temp_object_list) {
+          //     std::cout << "(" << os.id << ":" << os.count << ")-->";
+          // }
+          // std::cout << std::endl;
       } catch (tf::TransformException ex){
           ROS_ERROR("%s", ex.what());
           ros::Duration(1.0).sleep();
@@ -441,6 +564,8 @@ void processing (const ar_pose::ARMarkers::ConstPtr& msg) {
 
 int main(int argc, char **argv)
 {
+
+
     srand(time(NULL));
 
     std::mt19937 gen(std::time(0));
@@ -451,6 +576,8 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     signal(SIGINT, mySigintHandler);
+
+
 
     // Tell the action client that we want to spin a thread by default
     MoveBaseClient ac("move_base", true);
@@ -467,7 +594,7 @@ int main(int argc, char **argv)
     loc_visited_pub = nh.advertise<geometry_msgs::PoseArray>("loc_visited", 2, true);
 
     // Create a ROS subscriber
-    // ros::Subscriber sub = nh.subscribe ("ar_pose_marker", 1, processing);
+    ros::Subscriber sub = nh.subscribe ("ar_pose_marker", 1, processing);
 
     // ros::spin();
 
@@ -480,37 +607,18 @@ int main(int argc, char **argv)
 
     ROS_INFO("Start");
 
-    do {
-        ros::spinOnce();
-        ROS_INFO("Waiting for map...");
-        ros::Duration(1.0).sleep();
-    } while (!has_map);
+    current_distance = 0;
 
-    ROS_INFO("Got map, running main loop");
+    // Keep track of time
+    begin = clock();
 
-
-
-    ros::spin();
-
-
-    // Spin
-    ROS_INFO("Spinning");
-    geometry_msgs::Twist rotate;
-    rotate.angular.z = 0.3;
-
-    ros::Time start_time = ros::Time::now();
-    ros::Duration timeout(15.0); // Timeout of 2 seconds
-    while(ros::Time::now() - start_time < timeout) {
-        cmd_vel_pub.publish(rotate);
-        ros::spinOnce();
-    }
 
     // Read file and build relation
-    std::ifstream          file("/home/users/wxie/catkin_ws/src/bwi_will/bwi_object_search/relation_data_bak.txt");
+    std::ifstream          file(relation_data_path);
     std::string   line;
     std::vector<std::vector<int> >     data;
 
-    // Read one line at a time into the variable line:
+    // Read raw datat into vectors
     while(std::getline(file, line))
     {
         std::vector<int>   lineData;
@@ -542,42 +650,115 @@ int main(int argc, char **argv)
         // std::cout  << std::endl;
     }
 
-    distance_vector.push_back(0); // Dummy for the target
-    double target_x = -12.3969;
-    double target_y = -15.9015;
-    for (int l = 1; l < 16; ++l) {
-        double total_distance = 0;
-        int count = 0;
-        for(auto& kk : data) {
-            // // Skip itself
-            // if (kk[1] == 0)
-            //     continue;
-            if (kk[1] != l) {
+
+// struct ObjectDistribution {
+//     double mean_x;
+//     double mean_y;
+//     double var_x;
+//     double var_y;
+// };
+
+    for (int id = 0; id < 16; ++id) {
+        using namespace boost::accumulators;
+        accumulator_set< double, stats<tag::variance> > acc_x;
+        accumulator_set< double, stats<tag::variance> > acc_y;
+        int count;
+        // Calculate mean and variance for each id
+        for(auto& lineData : data) {
+            int line_id = lineData[1];
+            if (id != line_id) {
                 continue;
             }
-            // 0 time, 1 id, 2 x, 3, y, 4 z
-            double x = kk[2];
-            double y = kk[3];
-            double distance = sqrt(pow(x - target_x, 2) + pow(y - target_x, 2));
-            total_distance += distance;
+            double x = lineData[2];
+            double y = lineData[3];
+            acc_x(x);
+            acc_y(y);
             count++;
-            // for (auto&k : kk) {
-            //     std::cout << k << " ";
-            // }
-            // std::cout << std::endl;
         }
-        if (count == 0) {
-            distance_vector.push_back(0);
-        } else {
-            distance_vector.push_back(total_distance / count);
+        printf("ID: %d \t count: %d \t mean: (%.2f, %.2f) \t var: (%.2f, %.2f)\n", id, count, mean(acc_x), mean(acc_y), variance(acc_x), variance(acc_y));
+
+        double avg_var = (variance(acc_x) + variance(acc_y)) / 2;
+        if (avg_var < variance_avg_max_threshold &&
+            avg_var > variance_avg_min_threshold) {
+            ObjectDistribution od;
+            od.id = id;
+            od.mean_x = mean(acc_x);
+            od.mean_y = mean(acc_y);
+            od.var_x  = variance(acc_x);
+            od.var_y  = variance(acc_y);
+            od.seen = false;
+            od.distance = -1;
+            object_distribution_list.push_back(od);
         }
     }
 
-    for (auto distance : distance_vector)
-    {
-        std::cout << distance << " ";
+    // // Process parsed data
+    distance_vector.push_back(0); // Dummy for the target
+    // Loop through each landmark we can use
+    for (auto& od : object_distribution_list) {
+        if (od.id == target_id) {
+            continue;
+        }
+        od.distance = sqrt(pow(od.mean_x - target_x, 2) + pow(od.mean_y - target_x, 2));
+        std::cout << od.id << ":" << od.distance << ", ";
     }
     std::cout << std::endl;
+
+
+    // for (int id = 1; id < 16; ++l) {
+    //     double total_distance = 0;
+    //     int count = 0;
+    //     // Search data for the id
+    //     for(auto& kk : data) {
+
+    //         if (kk[1] != id) {
+    //             continue;
+    //         }
+    //         // 0 time, 1 id, 2 x, 3, y, 4 z
+    //         double x = kk[2];
+    //         double y = kk[3];
+    //         double distance = sqrt(pow(x - target_x, 2) + pow(y - target_x, 2));
+    //         total_distance += distance;
+    //         count++;
+    //         // for (auto&k : kk) {
+    //         //     std::cout << k << " ";
+    //         // }
+    //         // std::cout << std::endl;
+    //     }
+    //     if (count == 0) {
+    //         distance_vector.push_back(0);
+    //     } else {
+    //         distance_vector.push_back(total_distance / count);
+    //     }
+    // }
+
+    // for (auto distance : distance_vector)
+    // {
+    //     std::cout << distance << " ";
+    // }
+    // std::cout << std::endl;
+
+    // ros::spin();
+
+    do {
+        ros::spinOnce();
+        ROS_INFO("Waiting for map...");
+        ros::Duration(1.0).sleep();
+    } while (!has_map);
+
+    ROS_INFO("Got map, running main loop");
+
+    // // Spin
+    // ROS_INFO("Spinning");
+    // geometry_msgs::Twist rotate;
+    // rotate.angular.z = 0.3;
+
+    // ros::Time start_time = ros::Time::now();
+    // ros::Duration timeout(15.0); // Timeout of 2 seconds
+    // while(ros::Time::now() - start_time < timeout) {
+    //     cmd_vel_pub.publish(rotate);
+    //     ros::spinOnce();
+    // }
 
     while (ros::ok()) {
         // Filter out target poses
@@ -586,37 +767,39 @@ int main(int argc, char **argv)
 // std::vector<int> seen_id_list
 // std::vector<double>  seen_id_x_list;
 // std::vector<double>  seen_id_y_list;
-        double distance_bound = 3.0;
-        for (int id_index = 0; id_index < seen_id_list.size(); ++id_index) {
-            double target_distance = distance_vector[seen_id_list[id_index]];
-            if (target_distance == 0) {
-                continue;
-            }
-            ROS_INFO("Trying to eliminate target points...");
-            double target_x = seen_id_x_list[id_index];
-            double target_y = seen_id_y_list[id_index];
 
-            for (auto it = free_space_indices.begin(); it != free_space_indices.end();) {
-                double x = MAP_WXGX(map_, it->first);
-                double y =  MAP_WYGY(map_, it->second);
-                double distance = sqrt(pow(x - target_x, 2) + pow(y - target_x, 2));
+        // // Remove positions that don't fit in the distance vector
+        // double distance_bound = 3.0;
+        // for (int id_index = 0; id_index < seen_id_list.size(); ++id_index) {
+        //     double target_distance = distance_vector[seen_id_list[id_index]];
+        //     if (target_distance == 0) {
+        //         continue;
+        //     }
+        //     ROS_INFO("Trying to eliminate target points...");
+        //     double target_x = seen_id_x_list[id_index];
+        //     double target_y = seen_id_y_list[id_index];
 
-                if (distance > target_distance + distance_bound ||
-                    distance < target_distance - distance_bound) {
-                    it = free_space_indices.erase(it);
-                } else {
-                    ++it;
-                }
-            }
-        }
-        std::cout << "seen_id_list size: " << seen_id_list.size() << std::endl;
-        for (auto& id : seen_id_list) {
-            std::cout << id << " ";
-        }
-        std::cout<<std::endl;
-        // TODO Clear lists
-        publishFreeSpace();
-        ros::spinOnce();
+        //     for (auto it = free_space_indices.begin(); it != free_space_indices.end();) {
+        //         double x = MAP_WXGX(map_, it->first);
+        //         double y =  MAP_WYGY(map_, it->second);
+        //         double distance = sqrt(pow(x - target_x, 2) + pow(y - target_x, 2));
+
+        //         if (distance > target_distance + distance_bound ||
+        //             distance < target_distance - distance_bound) {
+        //             it = free_space_indices.erase(it);
+        //         } else {
+        //             ++it;
+        //         }
+        //     }
+        // }
+        // std::cout << "seen_id_list size: " << seen_id_list.size() << std::endl;
+        // for (auto& id : seen_id_list) {
+        //     std::cout << id << " ";
+        // }
+        // std::cout<<std::endl;
+        // // TODO Clear lists
+        // publishFreeSpace();
+        // ros::spinOnce();
 
 ////////////////////
 
@@ -673,12 +856,23 @@ int main(int argc, char **argv)
 
         ac.waitForResult();
 
-        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
             ROS_INFO("Move success");
-        else
+        } else{
             ROS_INFO("Move failed");
+            // Wait a bit
+            ros::Time start_time = ros::Time::now();
+            ros::Duration timeout(5.0); // Timeout of 2 seconds
+            while(ros::Time::now() - start_time < timeout) {
+
+                ros::spinOnce();
+            }
+            continue;
+        }
 
         ros::Duration(1).sleep();
+
+        searching = true;
 
         // Spin
         ROS_INFO("Spinning");
@@ -701,6 +895,8 @@ int main(int argc, char **argv)
         ROS_INFO("Done.");
 
         ros::spinOnce();
+
+        searching = false;
     }
 
     ROS_INFO("Gracefully exiting");
