@@ -74,8 +74,8 @@ std::string relation_data_path = ros::package::getPath("bwi_object_search") + "/
 
 ros::Duration time_threshold (2);
 double distance_threshold = 1.0;
-int count_threshold = 20;
-double range_max_threshold = 2.00;            // Limit the range the robot can detect objects
+int count_threshold = 10;
+double range_max_threshold = 3.00;            // Limit the range the robot can detect objects
 double range_min_threshold = 0.25;             // Limit the range the robot can detect objects
 double z_upper_threshold = 1.29;
 double z_lower_threshold = 0.88;
@@ -94,8 +94,8 @@ double variance_avg_max_threshold  = 1.00;
 double variance_avg_min_threshold  = 0.01;
 
 double target_id = 0;
-double target_x = -15.518;
-double target_y = -15.898;
+double target_x = 0;
+double target_y = 0;
 // double target_x = -12.3969;
 // double target_y = -15.9015;
 
@@ -239,7 +239,7 @@ void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& 
     ros::Duration amcl_wait (1.0);
     // Searching is a bool set by the behavior because we don't want the robot to eat up
     // all the position particles while driving in at the wrong direction
-    if (now - last_amcl_time > amcl_wait && searching) {
+    if (now - last_amcl_time > amcl_wait) {
         last_amcl_time = now;
 
         // Cast the forbidden circle
